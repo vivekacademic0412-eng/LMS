@@ -11,7 +11,6 @@
             !empty($isDocx) && $isDocx ? '.docx-renderer__body' : null,
             !empty($isDocx) && $isDocx ? '.docx-renderer section.docx-viewer' : null,
             !empty($isPptx) && $isPptx ? '.pptx-renderer__slide-stage' : null,
-            !empty($isOfficeDoc) && $isOfficeDoc && empty($isDocx) && empty($isPptx) ? '.office-fallback__box' : null,
         ]));
         $hasReadAloud = count($readAloudSelectors) > 0;
     @endphp

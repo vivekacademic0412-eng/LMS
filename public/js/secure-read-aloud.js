@@ -114,6 +114,70 @@
             .filter(Boolean);
     }
 
+    function isHiddenElement(element) {
+        if (!(element instanceof Element)) {
+            return false;
+        }
+
+        if (element.hidden || element.getAttribute('aria-hidden') === 'true') {
+            return true;
+        }
+
+        const styles = window.getComputedStyle(element);
+        return styles.display === 'none' || styles.visibility === 'hidden';
+    }
+
+    function isIgnoredTextContainer(element, root) {
+        if (!(element instanceof Element)) {
+            return true;
+        }
+
+        if (isHiddenElement(element)) {
+            return true;
+        }
+
+        if (element.closest('[data-read-aloud]') === root && !element.closest('[data-read-aloud-content]')) {
+            return true;
+        }
+
+        return ['SCRIPT', 'STYLE', 'NOSCRIPT', 'BUTTON', 'SELECT', 'OPTION', 'INPUT', 'TEXTAREA'].includes(element.tagName);
+    }
+
+    function collectNodeText(root, node) {
+        if (!(node instanceof Element) || isHiddenElement(node)) {
+            return '';
+        }
+
+        const fragments = [];
+        const walker = root.ownerDocument.createTreeWalker(
+            node,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function (textNode) {
+                    const parent = textNode.parentElement;
+                    if (!parent || isIgnoredTextContainer(parent, root)) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    return normalizeText(textNode.textContent || '') === ''
+                        ? NodeFilter.FILTER_REJECT
+                        : NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+
+        let currentNode = walker.nextNode();
+        while (currentNode) {
+            const text = normalizeText(currentNode.textContent || '');
+            if (text !== '') {
+                fragments.push(text);
+            }
+            currentNode = walker.nextNode();
+        }
+
+        return normalizeText(fragments.join(' '));
+    }
+
     function collectText(root) {
         const doc = root.ownerDocument;
         const selectors = selectorList(root);
@@ -130,7 +194,7 @@
             }
 
             nodes.forEach(function (node) {
-                const text = normalizeText(node.innerText || node.textContent || '');
+                const text = collectNodeText(root, node);
                 if (text !== '' && !seen.has(text)) {
                     seen.add(text);
                     fragments.push(text);
