@@ -17,7 +17,7 @@ class SecurityHeadersMiddleware
         $isMediaView = $request->routeIs('course-session-items.media.view');
         $isEmbeddedMediaView = $isMediaView && $request->boolean('embed');
         $allowsSameOriginFrame = $isMediaStream || $isEmbeddedMediaView;
-        $allowsYoutubeEmbeds = $request->routeIs('dashboard', 'demo-review-videos.*', 'demo-feature-video.*');
+        $allowsYoutubeEmbeds = $request->routeIs('dashboard', 'demo-review-videos.*');
         $response->headers->set('X-Frame-Options', $allowsSameOriginFrame ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -36,9 +36,7 @@ class SecurityHeadersMiddleware
 
         $frameSrc = 'frame-src '.implode(' ', array_unique($frameSources));
         $mediaSrc = $isMediaView ? "media-src 'self' https://res.cloudinary.com https://*.cloudinary.com" : "media-src 'self'";
-        $imgSrc = $isMediaView
-            ? "img-src 'self' data: https://res.cloudinary.com https://*.cloudinary.com https://i.ytimg.com"
-            : ($allowsYoutubeEmbeds ? "img-src 'self' data: https://i.ytimg.com" : "img-src 'self' data:");
+        $imgSrc = $isMediaView ? "img-src 'self' data: https://res.cloudinary.com https://*.cloudinary.com" : "img-src 'self' data:";
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
             "base-uri 'self'",
