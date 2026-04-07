@@ -8,7 +8,7 @@
         $totalHours = (int) $certificates->sum('hours_total');
         $brandLogo = data_get($certificates->first(), 'brand_logo_data_uri', '');
         if ($brandLogo === '' && is_file(public_path('images/logo.webp'))) {
-            $brandLogo = asset('images/logo.webp');
+            $brandLogo = '/images/logo.webp';
         }
         $brandName = trim((string) data_get($certificates->first(), 'brand_name', config('app.name', '')));
         if ($brandName === '' || $brandName === 'Laravel') {

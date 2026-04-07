@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Academic Mantra' }}</title>
-    <link rel="icon" type="image/webp" href="{{ asset('images/logo.webp') }}">
-    <link rel="shortcut icon" type="image/webp" href="{{ asset('images/logo.webp') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo.webp') }}">
+    <link rel="icon" type="image/webp" href="/images/logo.webp">
+    <link rel="shortcut icon" type="image/webp" href="/images/logo.webp">
+    <link rel="apple-touch-icon" href="/images/logo.webp">
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -1198,7 +1198,7 @@
     $roleLabels = \App\Models\User::roleOptions();
     $path = request()->path();
     $avatarUrl = $user->avatar_url;
-    $brandLogo = asset('images/logo.webp');
+    $brandLogo = '/images/logo.webp';
     $notificationsAvailable = \Illuminate\Support\Facades\Schema::hasTable('notifications');
     $topbarNotifications = collect();
     $topbarUnreadCount = 0;
@@ -1288,7 +1288,7 @@
                     <span>{{ $roleLabels[$user->role] ?? $user->role }}</span>
                 </div>
             </div>
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout', absolute: false) }}">
                 @csrf
                 <button type="submit" class="sidebar-logout">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1507,7 +1507,7 @@
                             </svg>
                             <span>Dashboard</span>
                         </a>
-                        <form method="POST" action="{{ route('logout') }}">
+                        <form method="POST" action="{{ route('logout', absolute: false) }}">
                             @csrf
                             <button type="submit" class="popup-item">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1540,7 +1540,7 @@
     </main>
 </div>
 
-<script src="{{ asset('js/theme.js') }}" defer></script>
-<script src="{{ asset('js/profile-popup.js') }}" defer></script>
+<script src="/js/theme.js" defer></script>
+<script src="/js/profile-popup.js" defer></script>
 </body>
 </html>

@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Academic Mantra Login' }}</title>
-    <link rel="icon" type="image/webp" href="{{ asset('images/logo.webp') }}">
-    <link rel="shortcut icon" type="image/webp" href="{{ asset('images/logo.webp') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo.webp') }}">
+    <link rel="icon" type="image/webp" href="/images/logo.webp">
+    <link rel="shortcut icon" type="image/webp" href="/images/logo.webp">
+    <link rel="apple-touch-icon" href="/images/logo.webp">
     <style>
         :root {
             --bg1: #eaf2ff;
@@ -128,10 +128,7 @@
             padding: 36px;
             color: #fff;
             background:
-                linear-gradient(160deg, rgba(11, 32, 58, 0.92), rgba(54, 45, 120, 0.82), rgba(15, 45, 80, 0.85)),
-                url("https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80");
-            background-size: cover;
-            background-position: center;
+                linear-gradient(160deg, rgba(11, 32, 58, 0.94), rgba(54, 45, 120, 0.84), rgba(15, 45, 80, 0.88));
             display: grid;
             align-content: center;
             gap: 18px;
@@ -293,7 +290,7 @@
 </head>
 <body>
 @php
-    $brandLogo = asset('images/logo.webp');
+    $brandLogo = '/images/logo.webp';
 @endphp
 <div class="auth-top-actions">
     <button type="button" class="icon-btn theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
@@ -330,6 +327,6 @@
         @yield('content')
     </section>
 </div>
-<script src="{{ asset('js/theme.js') }}" defer></script>
+<script src="/js/theme.js" defer></script>
 </body>
 </html>

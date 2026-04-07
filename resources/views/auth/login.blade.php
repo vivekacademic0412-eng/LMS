@@ -7,7 +7,7 @@
         <div class="error">{{ $errors->first() }}</div>
     @endif
 
-    <form method="POST" action="{{ route('login.attempt') }}">
+    <form method="POST" action="{{ route('login.attempt', absolute: false) }}">
         @csrf
         <div class="field">
             <label for="email">Email</label>

@@ -111,6 +111,6 @@ class User extends Authenticatable
             return $this->avatar;
         }
 
-        return asset('storage/'.ltrim($this->avatar, '/'));
+        return '/storage/'.ltrim($this->avatar, '/');
     }
 }

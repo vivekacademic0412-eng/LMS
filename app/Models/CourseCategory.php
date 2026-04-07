@@ -46,6 +46,6 @@ class CourseCategory extends Model
             return $this->thumbnail;
         }
 
-        return asset('storage/'.ltrim($this->thumbnail, '/'));
+        return '/storage/'.ltrim($this->thumbnail, '/');
     }
 }

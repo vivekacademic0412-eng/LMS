@@ -11,6 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        if (env('APP_ENV') === 'production' || str_starts_with((string) env('APP_URL', ''), 'https://')) {
+            $middleware->trustProxies(at: '*');
+        }
+
         $middleware->alias([
             'active' => \App\Http\Middleware\ActiveUserMiddleware::class,
             'activity.log' => \App\Http\Middleware\LogActivity::class,
