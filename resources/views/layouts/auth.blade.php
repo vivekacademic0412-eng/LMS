@@ -218,7 +218,10 @@
             font-weight: 500;
         }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
-        input[type="email"], input[type="password"] {
+        .password-input-wrap {
+            position: relative;
+        }
+        input[type="email"], input[type="password"], .password-input-wrap input[type="text"] {
             width: 100%;
             border: 1px solid #cad7e8;
             border-radius: 9px;
@@ -229,18 +232,64 @@
             color: #1a283f;
         }
         html[data-theme="dark"] input[type="email"],
-        html[data-theme="dark"] input[type="password"] {
+        html[data-theme="dark"] input[type="password"],
+        html[data-theme="dark"] .password-input-wrap input[type="text"] {
             background: #0f1a2b;
             border-color: #22324a;
             color: #e8effd;
         }
-        input[type="email"]:focus, input[type="password"]:focus {
+        .password-input-wrap input {
+            padding-right: 46px;
+        }
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 8px;
+            padding: 0;
+            background: transparent;
+            color: var(--muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 160ms ease, color 160ms ease;
+        }
+        .password-toggle:hover {
+            background: rgba(13, 93, 209, 0.08);
+            color: var(--primary);
+        }
+        .password-toggle:focus-visible {
+            outline: none;
+            background: rgba(13, 93, 209, 0.1);
+            color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 93, 208, 0.12);
+        }
+        html[data-theme="dark"] .password-toggle:hover,
+        html[data-theme="dark"] .password-toggle:focus-visible {
+            background: rgba(108, 168, 255, 0.12);
+        }
+        .password-toggle .icon-eye-off {
+            display: none;
+        }
+        .password-toggle[data-visible="true"] .icon-eye {
+            display: none;
+        }
+        .password-toggle[data-visible="true"] .icon-eye-off {
+            display: block;
+        }
+        input[type="email"]:focus, input[type="password"]:focus, .password-input-wrap input[type="text"]:focus {
             outline: none;
             border-color: #9fc1f1;
             box-shadow: 0 0 0 3px rgba(14, 93, 208, 0.12);
         }
         html[data-theme="dark"] input[type="email"]:focus,
-        html[data-theme="dark"] input[type="password"]:focus {
+        html[data-theme="dark"] input[type="password"]:focus,
+        html[data-theme="dark"] .password-input-wrap input[type="text"]:focus {
             border-color: #3c5f96;
             box-shadow: 0 0 0 3px rgba(108, 168, 255, 0.18);
         }
