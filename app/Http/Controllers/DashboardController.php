@@ -81,13 +81,18 @@ class DashboardController extends Controller
                 now()->addSeconds(60),
                 fn () => $this->resolveStudentDashboardData($user)
             );
-            $learningItems = $studentDashboard['learningItems'];
-            $studentResumeItem = $studentDashboard['resumeItem'];
-            $studentPendingActionItems = $studentDashboard['pendingActionItems'];
-            $studentPendingActionSummary = $studentDashboard['pendingActionSummary'];
-            $studentRecentSubmissions = $studentDashboard['recentSubmissions'];
-            $studentCertificates = $studentDashboard['certificates'];
-            $studentAnalytics = $studentDashboard['analytics'];
+            $learningItems = collect($studentDashboard['learningItems'] ?? []);
+            $studentResumeItem = $studentDashboard['resumeItem'] ?? null;
+            $studentPendingActionItems = collect($studentDashboard['pendingActionItems'] ?? []);
+            $studentPendingActionSummary = array_merge(
+                $studentPendingActionSummary,
+                (array) ($studentDashboard['pendingActionSummary'] ?? [])
+            );
+            $studentRecentSubmissions = collect($studentDashboard['recentSubmissions'] ?? []);
+            $studentCertificates = collect($studentDashboard['certificates'] ?? []);
+            $studentAnalytics = is_array($studentDashboard['analytics'] ?? null)
+                ? $studentDashboard['analytics']
+                : $this->emptyStudentAnalytics();
         } else {
             $learningItems = Cache::remember(
                 'dashboard.learning-items.'.$user->role.'.'.$user->id,
