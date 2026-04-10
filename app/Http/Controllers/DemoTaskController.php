@@ -16,9 +16,10 @@ use Illuminate\View\View;
 
 class DemoTaskController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
         $this->authorizeAdmin($request);
+
         return redirect()->route('demo-tasks.create-page');
     }
 

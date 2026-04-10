@@ -1571,7 +1571,7 @@
                     <h2>Control Panel</h2>
                     <p>{{ $roleLabels[$user->role] ?? $user->role }} Panel</p>
                 </div>
-                <a class="view-site-link" href="{{ route('dashboard') }}">View site ↗</a>
+                <a class="view-site-link" href="{{ route('dashboard') }}">View site -></a>
             </div>
 
             <div class="profile-top">

@@ -79,7 +79,7 @@ class AppServiceProvider extends ServiceProvider
 
         $port = $this->resolveRequestPort($request, $forwardedPort);
 
-        if ($port === '' || ($scheme === 'http' && $port === '80') || ($scheme === 'https' && $port === '443')) {
+        if ($port === '' || $this->isDefaultPublicPort($scheme, $port)) {
             return $scheme.'://'.$host;
         }
 
@@ -95,5 +95,18 @@ class AppServiceProvider extends ServiceProvider
         $requestPort = (string) $request->getPort();
 
         return ctype_digit($requestPort) ? $requestPort : '';
+    }
+
+    private function isDefaultPublicPort(string $scheme, string $port): bool
+    {
+        if ($port === '') {
+            return true;
+        }
+
+        if ($scheme === 'https') {
+            return in_array($port, ['80', '443'], true);
+        }
+
+        return $scheme === 'http' && $port === '80';
     }
 }

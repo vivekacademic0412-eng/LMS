@@ -316,9 +316,9 @@
                 </div>
             </div>
         </div>
-    @endforeach\n    <script src="{{ asset('js/course-modals.js') }}" defer></script>
+    @endforeach
+    <script src="{{ asset('js/course-modals.js') }}" defer></script>
 @endsection
-
 
 
 
