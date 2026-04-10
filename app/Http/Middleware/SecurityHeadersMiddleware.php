@@ -37,6 +37,15 @@ class SecurityHeadersMiddleware
         $frameSrc = 'frame-src '.implode(' ', array_unique($frameSources));
         $mediaSrc = $isMediaView ? "media-src 'self' https://res.cloudinary.com https://*.cloudinary.com" : "media-src 'self'";
         $imgSrc = $isMediaView ? "img-src 'self' data: https://res.cloudinary.com https://*.cloudinary.com" : "img-src 'self' data:";
+        $scriptSources = ["'self'"];
+        if (app()->environment('local')) {
+            $scriptSources[] = "'unsafe-inline'";
+            $scriptSources[] = "'unsafe-eval'";
+            $scriptSources[] = 'http://localhost:5173';
+            $scriptSources[] = 'http://127.0.0.1:5173';
+        }
+        $scriptSrc = 'script-src '.implode(' ', array_unique($scriptSources));
+
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
             "base-uri 'self'",
@@ -46,7 +55,7 @@ class SecurityHeadersMiddleware
             $mediaSrc,
             $imgSrc,
             "style-src 'self' 'unsafe-inline'",
-            "script-src 'self'",
+            $scriptSrc,
             "font-src 'self' data:",
             "connect-src 'self'",
             "object-src 'none'",
