@@ -1,0 +1,1248 @@
+LMSAM PROJECT CODE FLOW, STRUCTURE, AND FUNCTIONALITY
+Generated from the current codebase in this repository.
+
+================================================================
+1. PROJECT SUMMARY
+================================================================
+
+This project is a Laravel 12 based Learning Management System (LMS).
+It supports:
+
+- role-based login and access control
+- admin and superadmin management tools
+- manager/HR reporting and exports
+- IT monitoring and audit visibility
+- trainer workflows for assigned learners
+- student course access, progress, submissions, and certificates
+- demo user workflows with demo tasks and demo videos
+- secure media delivery for course files using Cloudinary
+- in-app notifications
+- activity logging and audit tracking
+
+Main project identity:
+
+- Backend framework: Laravel 12
+- PHP version: 8.2+
+- Frontend build: Vite
+- Styling: Tailwind CSS v4 plus large custom Blade/CSS styling
+- PDF generation: barryvdh/laravel-dompdf
+- Secure media integration: Cloudinary PHP SDK
+
+
+================================================================
+2. MAIN ENTRY POINTS
+================================================================
+
+Important startup files:
+
+- bootstrap/app.php
+  Configures routing, middleware aliases, guest redirect, trusted proxies, and exception bootstrapping.
+
+- routes/web.php
+  Contains the full web route map for login, dashboard, panels, courses, enrollments, demo tasks, submissions, and profile management.
+
+- app/Providers/AppServiceProvider.php
+  Forces root URL and HTTPS handling depending on request and environment.
+
+- public/index.php
+  Laravel HTTP entry point.
+
+- resources/views/layouts/app.blade.php
+  Main authenticated application layout with sidebar, topbar, notification popup, theme toggle, and profile popup.
+
+
+================================================================
+3. HIGH LEVEL REQUEST FLOW
+================================================================
+
+Normal request flow:
+
+1. Browser sends request to Laravel through public/index.php.
+2. Laravel boots application from bootstrap/app.php.
+3. Route is matched in routes/web.php.
+4. Middleware runs before controller logic:
+   - guest/auth
+   - active user check
+   - secure headers
+   - activity logging for write actions
+   - role check for restricted sections
+5. Controller validates request.
+6. Controller loads or updates Eloquent models.
+7. Services are used where business logic is shared:
+   - ActivityLogger
+   - StudentCertificateService
+   - CloudinaryPrivateMediaService
+8. Controller returns Blade view, file response, redirect, streamed response, or download.
+9. SecurityHeadersMiddleware adds CSP and other response headers.
+10. LogActivity stores audit records after successful POST/PUT/PATCH/DELETE requests.
+
+
+================================================================
+4. ACCESS CONTROL AND ROLES
+================================================================
+
+Roles are defined in app/Models/User.php:
+
+- superadmin
+- admin
+- manager_hr
+- it
+- trainer
+- student
+- demo
+
+Role usage:
+
+- superadmin
+  Full access to all management areas.
+
+- admin
+  Operational management access, but not allowed to manage superadmin/admin users.
+
+- manager_hr
+  View-oriented reporting access and HR export features.
+
+- it
+  View-oriented system monitoring and audit visibility.
+
+- trainer
+  Can see assigned students, assigned courses, submission queues, and quiz-live tools.
+
+- student
+  Can access enrolled courses, submit course work, and download earned certificates.
+
+- demo
+  Can access assigned demo tasks and demo videos and submit demo task responses.
+
+Middleware involved:
+
+- app/Http/Middleware/RoleMiddleware.php
+  Blocks access if user role is not one of the allowed route roles.
+
+- app/Http/Middleware/ActiveUserMiddleware.php
+  Immediately logs out inactive users and sends them back to login.
+
+- app/Http/Middleware/SecurityHeadersMiddleware.php
+  Adds CSP, frame, cache, and browser hardening headers.
+
+- app/Http/Middleware/LogActivity.php
+  Logs successful write actions to activity_logs.
+
+
+================================================================
+5. FOLDER STRUCTURE
+================================================================
+
+Backend code:
+
+- app/Http/Controllers
+  Main business flow handlers.
+
+- app/Http/Middleware
+  Access/security/audit request filters.
+
+- app/Models
+  Eloquent models and relationships.
+
+- app/Services
+  Shared business/service logic.
+
+- app/Notifications
+  Database notification payloads.
+
+- app/Support
+  Small helper classes like DemoVideoRatio.
+
+Frontend/view layer:
+
+- resources/views
+  Blade templates for auth, dashboard, panels, courses, trainer pages, student pages, demo pages, notifications, profile, errors.
+
+- resources/js
+  Vite entry file.
+
+- resources/css
+  Tailwind v4 entry file.
+
+Public assets:
+
+- public/js
+  Custom browser scripts for theme toggle, profile popup, filters, secure document viewing, student course interactions, and media helpers.
+
+- public/images
+  Branding assets like logo.webp.
+
+Database:
+
+- database/migrations
+  Schema history.
+
+- database/seeders/DatabaseSeeder.php
+  Generates demo/sample data for users, categories, courses, enrollments, submissions, and demo tasks.
+
+Testing:
+
+- tests/Feature
+  Feature tests for root redirect, activity logs pagination, and panel/report visibility/download behavior.
+
+
+================================================================
+6. ROUTE GROUP STRUCTURE
+================================================================
+
+The route file is routes/web.php.
+
+Public/guest routes:
+
+- GET /login -> AuthController@showLogin
+- POST /login -> AuthController@login
+- / redirects to /login
+
+Authenticated base routes:
+
+- GET /dashboard -> DashboardController@index
+- POST notification read endpoints
+- POST /logout -> AuthController@logout
+- GET/PUT /profile -> ProfileController
+
+Role-specific panel routes:
+
+- /panel/admin
+- /panel/manager-hr
+- /panel/manager-hr/reports/{report}/{format}
+- /panel/it
+- /panel/trainer
+- /panel/student
+
+Admin/superadmin routes:
+
+- /users
+- /enrollments
+- /submissions
+- /activity-logs
+- /broadcast-notifications
+- /courses/* week/session builder endpoints
+- /demo-tasks
+- /demo-feature-video
+- /demo-review-videos
+
+Shared authenticated course routes:
+
+- /course-categories
+- /courses
+- /course-session-items/{item}/secure-view
+- /course-session-items/{item}/stream
+- /course-session-items/{item}/download
+- submission download/review routes
+
+Trainer routes:
+
+- /trainer/progress
+- /trainer/assigned-students
+- /trainer/courses
+- /trainer/submissions
+- /trainer/courses/{course}/items
+- /trainer/items/{item}/submissions
+- /trainer/items/{item}/quiz-live
+
+Student routes:
+
+- /my-courses
+- /my-courses/{course}
+- /my-history
+- /my-certificates
+- certificate download endpoints
+- POST /course-session-items/{item}/submit
+
+Demo routes:
+
+- POST /demo-assignments/{assignment}/submit
+- demo resource/video download and display endpoints
+
+
+================================================================
+7. MAIN CONTROLLERS AND THEIR RESPONSIBILITIES
+================================================================
+
+AuthController
+
+- shows login page
+- rate limits login attempts
+- authenticates user with remember me support
+- blocks inactive account logins
+- regenerates session after login
+- logs login/logout events through ActivityLogger
+
+DashboardController
+
+- central role-aware landing page
+- builds different dashboard data for admin, trainer, student, demo, and viewer roles
+- counts users, courses, enrollments, live quizzes, pending reviews, certificates
+- loads notifications
+- builds quick actions and overview cards
+- handles mark one notification as read
+- handles mark all notifications as read
+
+UserManagementController
+
+- admin/superadmin user list and filtering
+- create user
+- update user
+- delete user
+- resend welcome/access email
+- limits which roles admins can create/manage
+
+CourseCategoryController
+
+- category list and pagination
+- parent/child category structure
+- create, update, delete categories
+- thumbnail upload/removal
+- prevents selecting a child category as a parent
+
+CourseController
+
+- course list with category/subcategory filters
+- course detail with weeks, sessions, items, and enrollments
+- create, update, delete courses
+- validates category/subcategory relationship
+- trainer can only open assigned courses
+
+CourseWeekController
+
+- creates course weeks
+- updates/deletes weeks
+- creates sessions inside weeks
+- auto-creates 4 default session items:
+  intro, main video, task, quiz
+- updates session item metadata and media
+- uploads secure media to Cloudinary
+
+CourseEnrollmentController
+
+- admin/superadmin enrollment listing and filters
+- assign student to course
+- update assignment
+- remove assignment
+- resend assignment email
+- show student's course catalog, history, certificates
+- show student course workspace
+- downloads certificate as SVG or PDF
+- sends both email and database notification on assignment
+
+CourseItemSubmissionController
+
+- admin review queue
+- trainer review queue
+- student task/quiz submission endpoint
+- submission download access control
+- trainer item-specific submissions page
+- review status update
+- revision request logic
+- quiz live toggle and student notification dispatch
+- course progress sync based on submit/review result
+
+CourseMediaController
+
+- secure media view page
+- secure stream endpoint
+- secure download endpoint
+- role-aware access control
+- marks course progress when a student opens content
+- proxies file streaming/download from Cloudinary
+- supports PDF/video/docx/pptx/image/audio viewing cases
+
+TrainerProgressController
+
+- trainer progress dashboard for assigned learners
+- assigned student listing
+- assigned course listing
+
+TrainerCourseItemsController
+
+- trainer view of task/quiz items inside assigned courses
+
+PanelController
+
+- role-specific panel rendering
+- trainer panel summary
+- manager/HR panel metrics and reporting
+- IT panel metrics and audit/service visibility
+- manager/HR report export as PDF or XLS
+
+BroadcastNotificationController
+
+- send database notifications to selected audiences
+- supports all active users, role-based audiences, and course students
+
+ActivityLogController
+
+- filtered/paginated audit log viewer
+- filter by user, module, action, search text, date, and page size
+
+DemoTaskController
+
+- demo task creation page
+- assignment page
+- submission review page
+- create/update/delete demo tasks
+- assign/update/delete demo task assignments
+- download task resources
+- inline view of uploaded task video
+- demo user submission endpoint
+- submission download with role checks
+- shared cooldown logic between demo submissions
+
+DemoFeatureVideoController
+
+- manages feature videos for demo module
+- supports uploaded file or YouTube link
+- supports position ordering when column exists
+- inline play or redirect to YouTube watch URL
+
+DemoReviewVideoController
+
+- manages review videos for demo module
+- YouTube based
+- supports ordering and video ratio
+
+ProfileController
+
+- user profile edit
+- update name, email, password, avatar
+
+CourseDayController
+
+- legacy/older day-based course builder
+- creates days and default items
+- updates day item content and secure file uploads
+- appears to remain in codebase but is not currently wired in routes/web.php
+
+
+================================================================
+8. SERVICE LAYER
+================================================================
+
+ActivityLogger
+
+- safe wrapper for writing records to activity_logs
+- skips logging if table does not exist
+- stores actor snapshot in properties
+- used directly by login/logout and HR export
+- also used indirectly by LogActivity middleware for write requests
+
+StudentCertificateService
+
+- checks whether a student completed all items in an enrollment
+- builds certificate payload data
+- creates certificate code
+- prepares downloadable SVG and PDF filenames
+- resolves brand name and logo assets
+
+CloudinaryPrivateMediaService
+
+- checks if Cloudinary env/config exists
+- uploads private course content
+- deletes previous assets
+- builds signed or public access URLs
+- builds temporary download URLs
+- used by CourseWeekController and CourseMediaController
+
+
+================================================================
+9. CORE DATA MODEL
+================================================================
+
+User
+
+- central actor model
+- stores name, email, role, active flag, password, avatar
+- relationships:
+  - coursesCreated
+  - enrollmentsAsStudent
+  - enrollmentsAsTrainer
+
+CourseCategory
+
+- top-level and child categories
+- self-referencing parent/children relationship
+
+Course
+
+- belongs to category and optional subcategory
+- belongs to creator user
+- has many weeks
+- has many enrollments
+
+CourseWeek
+
+- belongs to course
+- has many sessions
+
+CourseSession
+
+- belongs to week
+- has many items
+
+CourseSessionItem
+
+- belongs to session
+- item types:
+  - intro
+  - main_video
+  - task
+  - quiz
+- can hold:
+  - content text
+  - external URL
+  - secure Cloudinary asset metadata
+  - live quiz flags
+
+CourseEnrollment
+
+- links course + student + optional trainer + assigner
+- has many progress items
+- has many submissions
+
+CourseProgress
+
+- tracks completion status for each enrollment/item pair
+- completed_at drives progress percentage and certificate readiness
+
+CourseItemSubmission
+
+- stores task/quiz submission data
+- supports file upload or answer text
+- tracks review status:
+  - pending_review
+  - reviewed
+  - revision_requested
+
+ActivityLog
+
+- audit table for actor, module, action, description, route, IP, user agent, payload
+
+DemoTask
+
+- stores title, description, resource file/url, optional task video, AI video URL, video ratio
+
+DemoTaskAssignment
+
+- links demo user to demo task
+
+DemoTaskSubmission
+
+- stores participant info, answer text, uploaded file, optional video rating, submitted_at
+- has shared cooldown helper methods
+
+DemoFeatureVideo
+
+- stores uploaded feature video or YouTube link plus ordering and ratio
+
+DemoReviewVideo
+
+- stores YouTube review video plus ordering and ratio
+
+Notifications table
+
+- Laravel database notifications
+- used for broadcasts, submission alerts, quiz-live alerts, and course assignment alerts
+
+
+================================================================
+10. KEY FUNCTIONAL FLOWS
+================================================================
+
+10.1 Authentication flow
+
+Files:
+
+- routes/web.php
+- app/Http/Controllers/AuthController.php
+- app/Http/Middleware/ActiveUserMiddleware.php
+
+Flow:
+
+1. User opens /login.
+2. AuthController@showLogin returns login view unless already authenticated.
+3. POST /login validates email and password.
+4. RateLimiter blocks repeated failures after 5 attempts.
+5. Auth::attempt checks credentials.
+6. Inactive users are logged out immediately and a blocked_login activity is saved.
+7. Successful login regenerates session and saves login activity.
+8. User is redirected to dashboard.
+
+
+10.2 Dashboard flow
+
+Files:
+
+- app/Http/Controllers/DashboardController.php
+- resources/views/dashboard/*
+
+Flow:
+
+1. User opens /dashboard.
+2. Controller checks active user.
+3. Controller resolves dashboard mode:
+   - student
+   - trainer
+   - demo
+   - admin
+   - viewer
+4. Shared stats are calculated.
+5. Role-specific collections are built:
+   - student learning items, pending tasks, recent submissions, certificates
+   - trainer stats and counts
+   - demo assignments, videos, categories, recent admin demo submissions
+   - admin summary cards and shortcuts
+6. Blade dashboard renders role-specific partials.
+
+
+10.3 User management flow
+
+Files:
+
+- app/Http/Controllers/UserManagementController.php
+- resources/views/users/index.blade.php
+
+Flow:
+
+1. Admin opens /users.
+2. Users are filtered by role/status.
+3. Creating a user:
+   - validates role against current actor permissions
+   - optionally uploads avatar
+   - hashes password
+   - sends welcome/access email
+4. Updating a user:
+   - checks permission against target role
+   - updates profile data, role, active state, avatar, and optional password
+5. Deleting a user:
+   - cannot delete self
+   - admin cannot delete admin/superadmin
+
+
+10.4 Course and category management flow
+
+Files:
+
+- app/Http/Controllers/CourseCategoryController.php
+- app/Http/Controllers/CourseController.php
+- resources/views/courses/*
+
+Flow:
+
+1. Admin/HR/IT/trainer can view catalog pages.
+2. Only admin/superadmin can create/update/delete categories and courses.
+3. Category thumbnails and course thumbnails are stored on public disk.
+4. Courses belong to a category and optional subcategory.
+5. Course titles are unique inside category/subcategory combinations.
+6. Trainers can only open courses they are assigned to through enrollments.
+
+
+10.5 Course builder flow
+
+Files:
+
+- app/Http/Controllers/CourseWeekController.php
+- app/Models/CourseWeek.php
+- app/Models/CourseSession.php
+- app/Models/CourseSessionItem.php
+
+Flow:
+
+1. Admin creates a week under a course.
+2. Admin creates a session under a week.
+3. System auto-generates 4 session items:
+   - Intro PPT / Video
+   - Main Video
+   - Task
+   - Quiz
+4. Admin updates session items with:
+   - title
+   - resource type
+   - content
+   - external URL
+   - secure uploaded file
+5. If file is uploaded:
+   - CloudinaryPrivateMediaService uploads file
+   - old Cloudinary asset is deleted if replaced
+   - Cloudinary metadata is saved on item
+
+
+10.6 Enrollment flow
+
+Files:
+
+- app/Http/Controllers/CourseEnrollmentController.php
+- resources/views/enrollments/index.blade.php
+
+Flow:
+
+1. Admin assigns a student to a course, optionally with a trainer.
+2. Existing enrollment is reused if same student/course already exists.
+3. assigned_by is stored.
+4. Email is sent to student with course access information.
+5. Database notification is also sent if notifications table exists.
+6. Student later sees course inside My Courses.
+
+
+10.7 Student learning flow
+
+Files:
+
+- app/Http/Controllers/CourseEnrollmentController.php
+- app/Http/Controllers/CourseMediaController.php
+- app/Http/Controllers/CourseItemSubmissionController.php
+- resources/views/student/*
+
+Flow:
+
+1. Student opens /my-courses and sees enrolled course IDs.
+2. Student opens /my-courses/{course}.
+3. System verifies enrollment ownership.
+4. System ensures CourseProgress rows exist for all session items.
+5. Student opens content items.
+6. CourseMediaController marks the viewed item completed in course_progress.
+7. Pending next item is calculated for resume behavior.
+8. Student submits tasks/files or quiz text answers.
+9. Submission creates CourseItemSubmission and updates progress.
+10. Trainer/admin reviews submission.
+11. If reviewed, progress stays completed.
+12. If revision requested, progress is reset to incomplete.
+13. When all items are completed, certificate becomes available.
+
+
+10.8 Secure media flow
+
+Files:
+
+- app/Http/Controllers/CourseMediaController.php
+- app/Services/CloudinaryPrivateMediaService.php
+- resources/views/courses/secure-media-viewer*.blade.php
+
+Flow:
+
+1. User opens secure-view route for a course item.
+2. Controller authorizes by role:
+   - admins/hr/it can access
+   - student must be enrolled
+   - trainer must be assigned
+3. If item uses Cloudinary metadata:
+   - direct URL is generated
+   - stream route is prepared
+   - download route is prepared for task/quiz files
+4. Depending on asset type:
+   - video streams inline
+   - pdf streams inline
+   - docx/pptx streams inline/proxied
+   - office docs can use Google viewer URL
+   - external resource_url redirects away if no secure asset
+5. SecurityHeadersMiddleware adjusts CSP/frame rules for media viewing.
+
+
+10.9 Submission and review flow
+
+Files:
+
+- app/Http/Controllers/CourseItemSubmissionController.php
+- app/Notifications/SubmissionReceivedNotification.php
+- app/Notifications/QuizLiveNotification.php
+
+Student submit flow:
+
+1. Student submits task file or quiz answer.
+2. Item type must be task or quiz.
+3. Student must be enrolled in item's course.
+4. Quiz must be live before answer is allowed.
+5. Task requires file upload.
+6. Quiz requires answer_text.
+7. Submission is stored.
+8. Progress row is updated to completed.
+9. Trainer receives database notification if available.
+
+Review flow:
+
+1. Trainer/admin opens latest submissions.
+2. Only latest submission per enrollment/item is reviewable.
+3. review_status is updated.
+4. review_notes is required for revision_requested.
+5. CourseProgress is adjusted:
+   - reviewed => completed_at kept/set
+   - revision_requested => completed_at cleared
+
+Quiz live flow:
+
+1. Trainer/admin toggles quiz live state.
+2. live_at is set when turned on.
+3. Assigned students receive database notification.
+
+
+10.10 Trainer workflow
+
+Files:
+
+- app/Http/Controllers/TrainerProgressController.php
+- app/Http/Controllers/TrainerCourseItemsController.php
+- app/Http/Controllers/CourseItemSubmissionController.php
+
+Trainer features:
+
+- monitor assigned learners and progress
+- search/filter learners
+- see assigned courses
+- open task/quiz items in assigned courses
+- review submissions
+- toggle live quizzes
+
+
+10.11 Demo module flow
+
+Files:
+
+- app/Http/Controllers/DemoTaskController.php
+- app/Http/Controllers/DemoFeatureVideoController.php
+- app/Http/Controllers/DemoReviewVideoController.php
+- resources/views/demo/*
+
+Admin demo task flow:
+
+1. Admin creates demo task.
+2. Task may contain:
+   - description
+   - resource URL or uploaded resource file
+   - uploaded task video
+   - AI video URL
+   - video ratio
+3. Admin assigns task to demo user.
+4. Admin reviews assignment/submission pages.
+
+Demo user flow:
+
+1. Demo dashboard loads assigned demo tasks.
+2. Demo user downloads task resource or watches task video if available.
+3. Demo user submits:
+   - participant name
+   - participant email
+   - participant phone
+   - optional answer text
+   - required file upload
+   - required video rating if task video exists
+4. Latest submission cooldown is checked.
+5. Popup/session data is returned after submit.
+
+Feature/review video flow:
+
+- feature videos support upload or YouTube
+- review videos are YouTube-based
+- both support ordering and ratio handling
+
+
+10.12 Notification flow
+
+Files:
+
+- app/Http/Controllers/BroadcastNotificationController.php
+- DashboardController notification read actions
+- notification classes in app/Notifications
+
+Sources of notifications:
+
+- course assignment
+- submission received
+- quiz is live
+- broadcast notification
+
+Storage:
+
+- database notifications table
+
+Read behavior:
+
+- user can mark one notification as read
+- user can mark all notifications as read
+- layout topbar shows unread count and recent notification popup
+
+
+10.13 Activity log flow
+
+Files:
+
+- app/Http/Middleware/LogActivity.php
+- app/Services/ActivityLogger.php
+- app/Http/Controllers/ActivityLogController.php
+
+Write logging behavior:
+
+- logs POST/PUT/PATCH/DELETE requests after success
+- skips:
+  - logout
+  - notification read endpoints
+- stores:
+  - actor
+  - module
+  - action
+  - description
+  - route
+  - URL
+  - IP
+  - user agent
+  - sanitized payload
+
+Direct logging also occurs for:
+
+- login
+- logout
+- blocked inactive login
+- manager/HR report export
+
+
+10.14 Panels and reporting flow
+
+Files:
+
+- app/Http/Controllers/PanelController.php
+- resources/views/panels/*
+
+Manager/HR panel:
+
+- learner metrics
+- training pipeline counts
+- recent assignments
+- follow-up attention rows
+- category demand data
+- exportable reports:
+  - learner-progress
+  - inactive-learners
+  - completion
+  - certificate-ready
+
+IT panel:
+
+- activity log availability
+- notification table availability
+- Cloudinary configuration state
+- week/session builder availability
+- legacy day structure presence
+- secure media counts
+- auth/security/change event summaries
+
+Trainer panel:
+
+- assigned learners with progress percentages
+
+
+10.15 Certificate flow
+
+Files:
+
+- app/Services/StudentCertificateService.php
+- app/Http/Controllers/CourseEnrollmentController.php
+- resources/views/student/certificate-svg.blade.php
+- resources/views/student/certificate-pdf.blade.php
+
+Flow:
+
+1. Student opens My Certificates.
+2. StudentCertificateService checks each enrollment.
+3. Enrollment is certificate-ready only when completed items >= total items.
+4. Certificate metadata is prepared:
+   - student name
+   - course title
+   - category
+   - trainer/brand
+   - issue date
+   - code
+5. SVG download returns rendered Blade SVG.
+6. PDF download renders Blade to PDF using DomPDF.
+
+
+================================================================
+11. FRONTEND / VIEW LAYER
+================================================================
+
+Main layout:
+
+- resources/views/layouts/app.blade.php
+  Contains:
+  - sidebar menu by role
+  - dashboard link and panel title
+  - notification popup
+  - profile popup
+  - logout form
+  - theme toggle
+
+Important view folders:
+
+- resources/views/auth
+- resources/views/dashboard
+- resources/views/users
+- resources/views/enrollments
+- resources/views/courses
+- resources/views/trainer
+- resources/views/student
+- resources/views/demo
+- resources/views/panels
+- resources/views/profile
+- resources/views/notifications
+- resources/views/errors
+
+Public JS files include:
+
+- public/js/theme.js
+- public/js/profile-popup.js
+- public/js/login-password-toggle.js
+- public/js/student-courses.js
+- public/js/course-modals.js
+- public/js/filters.js
+- public/js/category.js
+- public/js/secure-read-aloud.js
+- public/js/secure-docx-viewer.js
+- public/js/secure-pptx-viewer.js
+
+Third-party browser helpers included in public/js:
+
+- mammoth for docx handling
+- docx-preview
+- jszip
+- pptx-to-html bundle
+
+Build files:
+
+- package.json
+- vite.config.js
+- resources/js/app.js
+- resources/css/app.css
+
+
+================================================================
+12. DATABASE / MIGRATION SUMMARY
+================================================================
+
+Foundational tables:
+
+- users
+- cache
+- jobs
+
+Core LMS tables:
+
+- course_categories
+- courses
+- course_weeks
+- course_sessions
+- course_session_items
+- course_enrollments
+- course_progress
+- course_item_submissions
+
+Demo module tables:
+
+- demo_tasks
+- demo_task_assignments
+- demo_task_submissions
+- demo_feature_videos
+- demo_review_videos
+
+Platform support tables:
+
+- notifications
+- activity_logs
+
+Legacy course structure still present:
+
+- course_days
+- course_day_items
+
+Schema evolution visible in migrations:
+
+- user active flag and avatar
+- category thumbnails and parent category support
+- course thumbnails and metadata
+- secure Cloudinary fields on learning items
+- week/session based course structure
+- submission review status
+- live quiz fields
+- notification support
+- demo task resource/video fields
+- demo feature video ordering and YouTube support
+- demo review videos
+- activity log table
+
+
+================================================================
+13. STORAGE PATHS USED BY THE APP
+================================================================
+
+Public disk examples:
+
+- storage/app/public/avatars
+- storage/app/public/course-thumbnails
+- storage/app/public/category-thumbnails
+
+Private/local disk examples:
+
+- storage/app/private/course-session-items
+- storage/app/private/task-submissions
+- storage/app/private/demo-task-resources
+- storage/app/private/demo-task-videos
+- storage/app/private/demo-task-submissions
+
+Other generated artifacts:
+
+- storage/framework/*
+- storage/logs/*
+
+
+================================================================
+14. SEEDING AND TEST COVERAGE
+================================================================
+
+DatabaseSeeder currently creates:
+
+- base users for every role
+- bulk role users
+- categories
+- multiple courses per category
+- weeks, sessions, and default items
+- random enrollments with progress
+- seeded task and quiz submissions
+- demo tasks, demo assignments, and some demo submissions
+
+Current visible tests cover:
+
+- root redirect to login
+- activity log default pagination size
+- manager/HR panel rendering
+- IT panel rendering
+- manager/HR report downloads in XLS and PDF
+
+This means the repository has some feature coverage, but many business flows are still untested.
+
+
+================================================================
+15. IMPORTANT ARCHITECTURAL NOTES
+================================================================
+
+1. The application currently contains both a newer week/session/item course structure and an older day/day-item structure.
+   The main routed flow uses weeks/sessions/items.
+   The day-based controller and models appear to be legacy support or transition code.
+
+2. Secure course media depends on Cloudinary configuration.
+   If Cloudinary credentials are missing, secure upload/update flows will fail.
+
+3. Several features gracefully check whether optional tables exist before using them.
+   Examples:
+   - notifications
+   - activity_logs
+   - demo_review_videos
+   - position column in demo_feature_videos
+
+4. The codebase relies heavily on Blade templates with large inline styling rather than a thin API + SPA structure.
+
+5. Activity logging is a major cross-cutting concern.
+   It is implemented both explicitly and through middleware.
+
+6. Student progress is item-based.
+   Opening content can mark progress complete, and reviews can reopen work by clearing completion.
+
+7. Trainer access is enforced through enrollments, not just role alone.
+
+8. Demo flows are isolated from normal student course flows.
+
+
+================================================================
+16. BEST FILES TO READ FIRST IF YOU WANT TO UNDERSTAND THE APP
+================================================================
+
+Start in this order:
+
+1. routes/web.php
+2. bootstrap/app.php
+3. app/Models/User.php
+4. app/Http/Controllers/DashboardController.php
+5. app/Http/Controllers/CourseEnrollmentController.php
+6. app/Http/Controllers/CourseItemSubmissionController.php
+7. app/Http/Controllers/CourseWeekController.php
+8. app/Http/Controllers/CourseMediaController.php
+9. app/Http/Controllers/DemoTaskController.php
+10. app/Http/Controllers/PanelController.php
+11. app/Services/StudentCertificateService.php
+12. app/Services/CloudinaryPrivateMediaService.php
+13. app/Http/Middleware/LogActivity.php
+14. resources/views/layouts/app.blade.php
+
+
+================================================================
+17. END TO END EXAMPLES
+================================================================
+
+Example A: Admin creates a course and assigns a student
+
+1. Admin logs in.
+2. Admin creates category if needed.
+3. Admin creates course.
+4. Admin adds week.
+5. Admin adds session.
+6. System creates intro/main/task/quiz items automatically.
+7. Admin uploads secure files to items.
+8. Admin creates enrollment linking course + student + trainer.
+9. Student gets email and database notification.
+
+Example B: Student learns and submits work
+
+1. Student logs in.
+2. Student opens My Courses.
+3. Student opens enrolled course.
+4. Progress rows are initialized.
+5. Student watches/opens session items.
+6. Progress is marked.
+7. Student uploads task file or answers live quiz.
+8. Trainer receives notification.
+9. Trainer reviews or requests revision.
+10. When all items are completed, certificate becomes downloadable.
+
+Example C: Trainer runs a live quiz
+
+1. Trainer opens assigned course items.
+2. Trainer toggles quiz live.
+3. Students receive notification.
+4. Students submit quiz answers.
+5. Trainer reviews latest submissions.
+
+Example D: Demo task lifecycle
+
+1. Admin creates demo task with resource and optional task video.
+2. Admin assigns demo task to demo user.
+3. Demo user opens dashboard and sees assigned task.
+4. Demo user downloads resource or watches video.
+5. Demo user submits participant details, rating, answer, and file.
+6. Submission enters cooldown window.
+7. Admin views demo submissions page.
+
+
+================================================================
+18. FINAL UNDERSTANDING
+================================================================
+
+This is not a simple CRUD app.
+It is a role-based LMS platform with:
+
+- catalog management
+- structured learning delivery
+- secure media streaming
+- trainer review workflow
+- certificate generation
+- demo experience tooling
+- reporting/export tools
+- audit visibility
+- notification delivery
+
+The most important business backbone is:
+
+User -> Role -> Enrollment -> Course -> Week -> Session -> Item -> Progress -> Submission -> Review -> Certificate
+
+The most important management backbone is:
+
+Admin/Superadmin -> Users/Categories/Courses/Enrollments/Demo Tasks/Broadcasts -> Activity Logs and Panels

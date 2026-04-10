@@ -10,6 +10,7 @@ use App\Models\CourseEnrollment;
 use App\Models\CourseProgress;
 use App\Models\CourseCategory;
 use App\Models\CourseItemSubmission;
+use App\Models\CourseQuizQuestion;
 use App\Models\DemoTask;
 use App\Models\DemoTaskAssignment;
 use App\Models\DemoTaskSubmission;
@@ -180,7 +181,7 @@ class DatabaseSeeder extends Seeder
                             ];
 
                             foreach ($items as [$type, $titlePart, $resourceType]) {
-                                CourseSessionItem::updateOrCreate(
+                                $sessionItem = CourseSessionItem::updateOrCreate(
                                     [
                                         'course_session_id' => $session->id,
                                         'item_type' => $type,
@@ -192,6 +193,10 @@ class DatabaseSeeder extends Seeder
                                         'resource_url' => 'https://example.com/resource/'.Str::slug($course->title)."/{$weekNo}/{$sessionNo}/{$type}",
                                     ]
                                 );
+
+                                if ($type === CourseSessionItem::TYPE_QUIZ) {
+                                    $this->seedQuizQuestions($sessionItem, $course->title, $weekNo, $sessionNo);
+                                }
                             }
                         }
                     }
@@ -350,5 +355,56 @@ class DatabaseSeeder extends Seeder
             }
         }
     }
-}
 
+    private function seedQuizQuestions(CourseSessionItem $item, string $courseTitle, int $weekNo, int $sessionNo): void
+    {
+        $item->update([
+            'quiz_pass_percentage' => 70,
+            'quiz_max_attempts' => 3,
+            'quiz_time_limit_minutes' => 15,
+        ]);
+
+        $questions = [
+            [
+                'position' => 1,
+                'question_type' => CourseQuizQuestion::TYPE_SINGLE_CHOICE,
+                'prompt' => "Which week is this quiz attached to in {$courseTitle}?",
+                'options' => ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                'correct_answer' => (string) $weekNo,
+                'accepted_answers' => null,
+                'points' => 2,
+                'explanation' => 'Match the quiz with the current course week.',
+            ],
+            [
+                'position' => 2,
+                'question_type' => CourseQuizQuestion::TYPE_TRUE_FALSE,
+                'prompt' => "Session {$sessionNo} belongs to the active learning path for this week.",
+                'options' => null,
+                'correct_answer' => 'true',
+                'accepted_answers' => null,
+                'points' => 1,
+                'explanation' => 'Sessions are grouped inside the week path.',
+            ],
+            [
+                'position' => 3,
+                'question_type' => CourseQuizQuestion::TYPE_SHORT_ANSWER,
+                'prompt' => 'Type the word learning to confirm you completed the practice quiz.',
+                'options' => null,
+                'correct_answer' => null,
+                'accepted_answers' => ['learning'],
+                'points' => 2,
+                'explanation' => 'A short exact-match answer keeps the seeded quiz simple.',
+            ],
+        ];
+
+        foreach ($questions as $question) {
+            CourseQuizQuestion::updateOrCreate(
+                [
+                    'course_session_item_id' => $item->id,
+                    'position' => $question['position'],
+                ],
+                $question
+            );
+        }
+    }
+}

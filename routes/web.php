@@ -8,6 +8,7 @@ use App\Http\Controllers\CourseWeekController;
 use App\Http\Controllers\CourseEnrollmentController;
 use App\Http\Controllers\CourseItemSubmissionController;
 use App\Http\Controllers\CourseMediaController;
+use App\Http\Controllers\CourseQuizController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemoFeatureVideoController;
@@ -88,6 +89,8 @@ Route::middleware(['auth', 'active', 'secure.headers', 'activity.log'])->group(f
         Route::put('/course-sessions/{session}', [CourseWeekController::class, 'updateSession'])->name('course-sessions.update');
         Route::delete('/course-sessions/{session}', [CourseWeekController::class, 'destroySession'])->name('course-sessions.destroy');
         Route::put('/course-session-items/{item}', [CourseWeekController::class, 'updateItem'])->name('course-session-items.update');
+        Route::get('/course-session-items/{item}/quiz-editor', [CourseQuizController::class, 'edit'])->name('course-session-items.quiz.edit');
+        Route::put('/course-session-items/{item}/quiz-editor', [CourseQuizController::class, 'update'])->name('course-session-items.quiz.update');
 
         Route::get('/demo-tasks', [DemoTaskController::class, 'index'])->name('demo-tasks.index');
         Route::get('/demo-tasks/create', [DemoTaskController::class, 'createPage'])->name('demo-tasks.create-page');

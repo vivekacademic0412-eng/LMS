@@ -162,10 +162,14 @@ class CourseWeekController extends Controller
 
         $data = $request->validate($baseRules);
 
-        $hasFileOrUrl = $request->hasFile('resource_file') || ! empty($data['resource_url']);
+        $hasPersistentResource = $request->hasFile('resource_file')
+            || ! empty($data['resource_url'])
+            || $item->hasPrivateCloudinaryAsset();
         $quizHasContent = $item->item_type === CourseSessionItem::TYPE_QUIZ && ! empty($data['content']);
+        $quizHasQuestions = $item->item_type === CourseSessionItem::TYPE_QUIZ
+            && $item->quizQuestions()->exists();
 
-        if (! $hasFileOrUrl && ! $quizHasContent) {
+        if (! $hasPersistentResource && ! $quizHasContent && ! $quizHasQuestions) {
             throw ValidationException::withMessages([
                 'resource_file' => 'Upload a file or provide an external URL.',
                 'resource_url' => 'Upload a file or provide an external URL.',

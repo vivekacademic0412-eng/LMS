@@ -27,6 +27,7 @@ class TrainerCourseItemsController extends Controller
         $items = CourseSessionItem::whereHas('session.week', fn ($q) => $q->where('course_id', $course->id))
             ->whereIn('item_type', [CourseSessionItem::TYPE_TASK, CourseSessionItem::TYPE_QUIZ])
             ->with('session.week')
+            ->withCount('quizQuestions')
             ->get()
             ->sortBy(function (CourseSessionItem $item): string {
                 $week = (int) ($item->session?->week?->week_number ?? 0);

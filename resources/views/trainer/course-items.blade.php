@@ -37,6 +37,10 @@
                             <td>
                                 @if ($item->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ)
                                     {{ $item->is_live ? 'Live' : 'Closed' }}
+                                    <div class="muted">
+                                        {{ $item->quiz_questions_count }} question{{ $item->quiz_questions_count === 1 ? '' : 's' }}
+                                        | Pass {{ $item->quizPassPercentage() }}%
+                                    </div>
                                 @else
                                     Ready
                                 @endif

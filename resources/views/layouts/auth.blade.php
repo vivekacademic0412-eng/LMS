@@ -80,6 +80,25 @@
             right: 14px;
             z-index: 10;
         }
+        .auth-back {
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 10;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--card);
+            border: 1px solid var(--line);
+            padding: 8px 12px;
+            border-radius: 999px;
+            box-shadow: 0 10px 20px rgba(7, 18, 34, 0.12);
+            transition: 160ms ease;
+        }
+        .auth-back:hover {
+            transform: translateY(-1px);
+        }
         .icon-btn {
             width: 36px;
             height: 36px;
@@ -359,7 +378,12 @@
         </svg>
     </button>
 </div>
-<div class="auth-shell">
+    @php
+        $previousUrl = url()->previous();
+        $backUrl = $backUrl ?? ($previousUrl && $previousUrl !== url()->current() ? $previousUrl : url('/'));
+    @endphp
+    <a class="auth-back" href="{{ $backUrl }}">&larr; Back</a>
+    <div class="auth-shell">
     <section class="auth-brand">
         <div class="auth-logo-shell">
             <img src="{{ $brandLogo }}" alt="Academic Mantra" class="auth-logo">

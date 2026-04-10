@@ -133,15 +133,7 @@
                             <td>{{ $submission?->submitted_at?->diffForHumans() ?? '-' }}</td>
                             <td>
                                 @if ($submission)
-                                    @if ($submission->answer_text)
-                                        <div class="submission-copy">{{ $submission->answer_text }}</div>
-                                    @endif
-                                    @if ($submission->file_path)
-                                        <a class="btn btn-soft mt-8" href="{{ route('course-item-submissions.download', $submission) }}">Download File</a>
-                                    @endif
-                                    @if (! $submission->answer_text && ! $submission->file_path)
-                                        -
-                                    @endif
+                                    @include('submissions.partials.response-cell', ['submission' => $submission])
                                 @else
                                     -
                                 @endif
@@ -201,6 +193,18 @@
                                     </select>
                                 </div>
                             </div>
+                            @if ($submission->submission_type === \App\Models\CourseSessionItem::TYPE_QUIZ && $submission->score_total)
+                                <div class="field">
+                                    <label>Score Earned (out of {{ $submission->score_total }})</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="{{ $submission->score_total }}"
+                                        name="score_earned"
+                                        value="{{ old('score_earned', $submission->score_earned) }}"
+                                    >
+                                </div>
+                            @endif
                             <div class="field">
                                 <label>Review Notes</label>
                                 <textarea name="review_notes" rows="5" placeholder="Share feedback, corrections, or next steps.">{{ old('review_notes', $submission->review_notes) }}</textarea>

@@ -32,6 +32,9 @@ class CourseSessionItem extends Model
         'resource_url',
         'is_live',
         'live_at',
+        'quiz_pass_percentage',
+        'quiz_max_attempts',
+        'quiz_time_limit_minutes',
         'cloudinary_public_id',
         'cloudinary_resource_type',
         'cloudinary_format',
@@ -43,6 +46,9 @@ class CourseSessionItem extends Model
         return [
             'is_live' => 'boolean',
             'live_at' => 'datetime',
+            'quiz_pass_percentage' => 'integer',
+            'quiz_max_attempts' => 'integer',
+            'quiz_time_limit_minutes' => 'integer',
         ];
     }
 
@@ -66,5 +72,29 @@ class CourseSessionItem extends Model
     public function submissions(): HasMany
     {
         return $this->hasMany(CourseItemSubmission::class, 'course_session_item_id');
+    }
+
+    public function quizQuestions(): HasMany
+    {
+        return $this->hasMany(CourseQuizQuestion::class, 'course_session_item_id')
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    public function quizPassPercentage(): int
+    {
+        return max(1, min(100, (int) ($this->quiz_pass_percentage ?? 70)));
+    }
+
+    public function quizMaxAttempts(): int
+    {
+        return max(1, (int) ($this->quiz_max_attempts ?? 3));
+    }
+
+    public function quizTimeLimitMinutes(): ?int
+    {
+        $minutes = (int) ($this->quiz_time_limit_minutes ?? 0);
+
+        return $minutes > 0 ? $minutes : null;
     }
 }

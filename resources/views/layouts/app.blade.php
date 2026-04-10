@@ -135,23 +135,120 @@
 
         .menu {
             display: grid;
-            gap: 8px;
+            gap: 10px;
             align-content: start;
         }
 
-        .menu a {
+        .menu-group {
+            border: 1px solid color-mix(in srgb, var(--sidebar-border) 78%, #ffffff 22%);
+            border-radius: 16px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.22));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.34),
+                0 10px 18px rgba(17, 42, 79, 0.04);
+            overflow: hidden;
+        }
+
+        html[data-theme="dark"] .menu-group {
+            background:
+                linear-gradient(180deg, rgba(20, 33, 58, 0.92), rgba(15, 27, 48, 0.88));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.02),
+                0 12px 24px rgba(0, 0, 0, 0.16);
+        }
+
+        .menu-group summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 11px 12px;
+            cursor: pointer;
+            color: var(--sidebar-title);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .menu-group summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .menu-group[open] summary {
+            border-bottom: 1px solid color-mix(in srgb, var(--sidebar-border) 74%, #ffffff 26%);
+            background: color-mix(in srgb, var(--sidebar-link-hover-bg) 64%, transparent 36%);
+        }
+
+        .menu-group-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .menu-group-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--primary-soft) 75%, #ffffff 25%);
+            color: var(--primary);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        .menu-group-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .menu-chevron {
+            color: var(--sidebar-subtitle);
+            transition: transform 180ms ease, color 180ms ease;
+            flex-shrink: 0;
+        }
+
+        .menu-group[open] .menu-chevron {
+            transform: rotate(90deg);
+            color: var(--primary);
+        }
+
+        .menu-group-body {
+            display: grid;
+            gap: 6px;
+            padding: 10px;
+        }
+
+        .menu-link {
             text-decoration: none;
             color: var(--sidebar-link);
-            border: 1px solid transparent;
-            border-radius: 10px;
-            padding: 10px 11px;
+            border: 1px solid color-mix(in srgb, var(--sidebar-link-hover-border) 50%, transparent 50%);
+            border-radius: 12px;
+            padding: 9px 10px;
+            background: color-mix(in srgb, var(--sidebar-brand-bg) 78%, transparent 22%);
+            display: grid;
+            gap: 2px;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             transition: 180ms ease;
         }
 
-        .menu a:hover,
-        .menu a.active {
+        .menu-link-label {
+            display: block;
+            line-height: 1.25;
+        }
+
+        .menu-link:hover,
+        .menu-link.active {
             border-color: var(--sidebar-link-hover-border);
             background: var(--sidebar-link-hover-bg);
             transform: translateX(2px);
@@ -859,6 +956,41 @@
 
         .card:hover { transform: translateY(-2px); border-color: #bfd3ef; box-shadow: 0 24px 40px rgba(11, 34, 66, 0.14); }
 
+        h1, h2, h3, h4, h5, h6 {
+            margin: 0 0 6px;
+            line-height: 1.2;
+            color: var(--text);
+        }
+
+        p { margin: 0; color: inherit; }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .section-link {
+            text-decoration: none;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: color-mix(in srgb, var(--primary-soft) 80%, transparent 20%);
+            border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent 75%);
+        }
+
+        .section-link:hover {
+            background: color-mix(in srgb, var(--primary-soft) 90%, transparent 10%);
+            transform: translateY(-1px);
+        }
+
         .grid { display: grid; gap: 14px; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
         .kpi { font-size: 27px; font-weight: 700; }
@@ -925,6 +1057,22 @@
             border-bottom: 1px solid var(--line-soft);
             vertical-align: top;
             text-align: left;
+        }
+
+        th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            background: color-mix(in srgb, var(--card) 92%, #eaf2ff 8%);
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         input, select, textarea {
@@ -1180,7 +1328,7 @@
         @media (max-width: 980px) {
             .app { grid-template-columns: 1fr; }
             .sidebar { position: static; height: auto; grid-template-rows: auto auto; }
-            .menu { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .menu { grid-template-columns: 1fr; }
             .topbar { flex-direction: column; align-items: stretch; }
             .profile-top { justify-content: flex-end; }
             .view-site-link { border-left: 0; padding-left: 0; }
@@ -1196,9 +1344,14 @@
 @php
     $user = auth()->user();
     $roleLabels = \App\Models\User::roleOptions();
-    $path = request()->path();
     $avatarUrl = $user->avatar_url;
     $brandLogo = '/images/logo.webp';
+    $makeItem = static fn (string $label, string $route, array $match, bool $show = true): array => [
+        'label' => $label,
+        'route' => $route,
+        'match' => $match,
+        'show' => $show,
+    ];
     $notificationsAvailable = \Illuminate\Support\Facades\Schema::hasTable('notifications');
     $topbarNotifications = collect();
     $topbarUnreadCount = 0;
@@ -1210,48 +1363,145 @@
         $topbarUnreadNotifications = $topbarNotifications->filter(fn ($notification) => is_null($notification->read_at))->values();
         $topbarSeenNotifications = $topbarNotifications->reject(fn ($notification) => is_null($notification->read_at))->values();
     }
+
     if ($user->role === \App\Models\User::ROLE_STUDENT) {
-        $menu = [
-            ['label' => 'Dashboard', 'route' => 'dashboard', 'show' => true],
-            ['label' => 'My Courses', 'route' => 'student.courses', 'show' => true],
-            ['label' => 'History', 'route' => 'student.history', 'show' => true],
-            ['label' => 'Certificates', 'route' => 'student.certificates', 'show' => true],
-            ['label' => 'My Profile', 'route' => 'profile.edit', 'show' => true],
+        $menuGroups = [
+            [
+                'label' => 'Panels',
+                'items' => [
+                    $makeItem('Dashboard', 'dashboard', ['dashboard']),
+                    $makeItem('Student Panel', 'panel.student', ['panel.student']),
+                ],
+            ],
+            [
+                'label' => 'Learning',
+                'items' => [
+                    $makeItem('My Courses', 'student.courses', ['student.courses*']),
+                    $makeItem('History', 'student.history', ['student.history']),
+                    $makeItem('Certificates', 'student.certificates', ['student.certificates*']),
+                ],
+            ],
+            [
+                'label' => 'Account',
+                'items' => [
+                    $makeItem('My Profile', 'profile.edit', ['profile.*']),
+                ],
+            ],
         ];
     } else {
         if ($user->role === \App\Models\User::ROLE_DEMO) {
-            $menu = [
-                ['label' => 'Dashboard', 'route' => 'dashboard', 'show' => true],
+            $menuGroups = [
+                [
+                    'label' => 'Demo Workspace',
+                    'items' => [
+                        $makeItem('Dashboard', 'dashboard', ['dashboard']),
+                    ],
+                ],
+                [
+                    'label' => 'Account',
+                    'items' => [
+                        $makeItem('My Profile', 'profile.edit', ['profile.*']),
+                    ],
+                ],
             ];
         } elseif ($user->role === \App\Models\User::ROLE_TRAINER) {
-            $menu = [
-                ['label' => 'Dashboard', 'route' => 'dashboard', 'show' => true],
-                ['label' => 'Review Queue', 'route' => 'trainer.submissions', 'show' => true],
-                ['label' => 'All Courses', 'route' => 'trainer.courses', 'show' => true],
-                ['label' => 'Assigned Students', 'route' => 'trainer.assigned-students', 'show' => true],
-                ['label' => 'Trainer Tracking', 'route' => 'trainer.progress', 'show' => true],
-                ['label' => 'My Profile', 'route' => 'profile.edit', 'show' => true],
+            $menuGroups = [
+                [
+                    'label' => 'Panels',
+                    'items' => [
+                        $makeItem('Dashboard', 'dashboard', ['dashboard']),
+                        $makeItem('Trainer Panel', 'panel.trainer', ['panel.trainer']),
+                    ],
+                ],
+                [
+                    'label' => 'Reviews',
+                    'items' => [
+                        $makeItem('Review Queue', 'trainer.submissions', ['trainer.submissions', 'trainer.items.submissions', 'course-item-submissions.review']),
+                    ],
+                ],
+                [
+                    'label' => 'Teaching',
+                    'items' => [
+                        $makeItem('All Courses', 'trainer.courses', ['trainer.courses', 'trainer.courses.items']),
+                        $makeItem('Assigned Students', 'trainer.assigned-students', ['trainer.assigned-students']),
+                        $makeItem('Trainer Tracking', 'trainer.progress', ['trainer.progress']),
+                    ],
+                ],
+                [
+                    'label' => 'Account',
+                    'items' => [
+                        $makeItem('My Profile', 'profile.edit', ['profile.*']),
+                    ],
+                ],
             ];
         } else {
-            $menu = [
-                ['label' => 'Dashboard', 'route' => 'dashboard', 'show' => true],
-                ['label' => 'HR Panel', 'route' => 'panel.manager_hr', 'show' => $user->role === \App\Models\User::ROLE_MANAGER_HR],
-                ['label' => 'IT Panel', 'route' => 'panel.it', 'show' => $user->role === \App\Models\User::ROLE_IT],
-                ['label' => 'Course Categories', 'route' => 'course-categories.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_MANAGER_HR, \App\Models\User::ROLE_IT], true)],
-                ['label' => 'Courses', 'route' => 'courses.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_MANAGER_HR, \App\Models\User::ROLE_IT], true)],
-                ['label' => 'Enrollments', 'route' => 'enrollments.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Submission Review', 'route' => 'submissions.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Activity Logs', 'route' => 'activity-logs.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'User Control', 'route' => 'users.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Broadcast Notifications', 'route' => 'broadcast-notifications.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Create Demo Task', 'route' => 'demo-tasks.create-page', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Assign Demo Task', 'route' => 'demo-tasks.assign-page', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Demo Feature Video', 'route' => 'demo-feature-video.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'Reviews', 'route' => 'demo-review-videos.index', 'show' => in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)],
-                ['label' => 'My Profile', 'route' => 'profile.edit', 'show' => true],
+            $menuGroups = [
+                [
+                    'label' => 'Panels',
+                    'items' => [
+                        $makeItem('Dashboard', 'dashboard', ['dashboard']),
+                        $makeItem('Admin Panel', 'panel.admin', ['panel.admin'], $user->role === \App\Models\User::ROLE_ADMIN),
+                        $makeItem('HR Panel', 'panel.manager_hr', ['panel.manager_hr', 'panel.manager_hr.export'], $user->role === \App\Models\User::ROLE_MANAGER_HR),
+                        $makeItem('IT Panel', 'panel.it', ['panel.it'], $user->role === \App\Models\User::ROLE_IT),
+                    ],
+                ],
+                [
+                    'label' => 'Catalog',
+                    'items' => [
+                        $makeItem('Course Categories', 'course-categories.index', ['course-categories.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_MANAGER_HR, \App\Models\User::ROLE_IT], true)),
+                        $makeItem('Courses', 'courses.index', ['courses.*', 'course-weeks.*', 'course-sessions.*', 'course-session-items.update'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_MANAGER_HR, \App\Models\User::ROLE_IT], true)),
+                        $makeItem('Enrollments', 'enrollments.index', ['enrollments.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                    ],
+                ],
+                [
+                    'label' => 'Operations',
+                    'items' => [
+                        $makeItem('Submission Review', 'submissions.index', ['submissions.index', 'course-item-submissions.review'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('Activity Logs', 'activity-logs.index', ['activity-logs.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('Broadcast Notifications', 'broadcast-notifications.index', ['broadcast-notifications.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('User Control', 'users.index', ['users.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                    ],
+                ],
+                [
+                    'label' => 'Demo Center',
+                    'items' => [
+                        $makeItem('Create Demo Task', 'demo-tasks.create-page', ['demo-tasks.index', 'demo-tasks.create-page', 'demo-tasks.store', 'demo-tasks.update', 'demo-tasks.destroy'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('Assign Demo Task', 'demo-tasks.assign-page', ['demo-tasks.assign-page', 'demo-tasks.assign', 'demo-tasks.assignments.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('Task Submissions', 'demo-tasks.submissions-page', ['demo-tasks.submissions-page', 'demo-tasks.submissions.download'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('Demo Feature Video', 'demo-feature-video.index', ['demo-feature-video.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                        $makeItem('Review Videos', 'demo-review-videos.index', ['demo-review-videos.*'], in_array($user->role, [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_ADMIN], true)),
+                    ],
+                ],
+                [
+                    'label' => 'Account',
+                    'items' => [
+                        $makeItem('My Profile', 'profile.edit', ['profile.*']),
+                    ],
+                ],
             ];
         }
     }
+    $menuGroups = collect($menuGroups)
+        ->map(function (array $group): array {
+            $items = collect($group['items'] ?? [])
+                ->filter(fn (array $item): bool => (bool) ($item['show'] ?? false))
+                ->map(function (array $item): array {
+                    $item['active'] = request()->routeIs(...($item['match'] ?? []));
+
+                    return $item;
+                })
+                ->values()
+                ->all();
+
+            return [
+                'label' => $group['label'],
+                'items' => $items,
+                'active' => collect($items)->contains('active', true),
+            ];
+        })
+        ->filter(fn (array $group): bool => $group['items'] !== [])
+        ->values()
+        ->all();
     $initials = strtoupper(substr($user->name, 0, 1) . substr(strrchr(' ' . $user->name, ' '), 1, 1));
 @endphp
 
@@ -1264,13 +1514,25 @@
                 </div>
             </div>
             <nav class="menu">
-                @foreach ($menu as $item)
-                    @if ($item['show'])
-                        @php $url = route($item['route']); @endphp
-                        <a href="{{ $url }}" class="{{ str_starts_with($path, trim(parse_url($url, PHP_URL_PATH), '/')) ? 'active' : '' }}">
-                            {{ $item['label'] }}
-                        </a>
-                    @endif
+                @foreach ($menuGroups as $group)
+                    <details class="menu-group" @if($group['active'] || $loop->first) open @endif>
+                        <summary>
+                            <span class="menu-group-label">{{ $group['label'] }}</span>
+                            <span class="menu-group-meta">
+                                <span class="menu-group-count">{{ count($group['items']) }}</span>
+                                <svg class="menu-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </span>
+                        </summary>
+                        <div class="menu-group-body">
+                            @foreach ($group['items'] as $item)
+                                <a href="{{ route($item['route']) }}" class="menu-link {{ $item['active'] ? 'active' : '' }}">
+                                    <span class="menu-link-label">{{ $item['label'] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </details>
                 @endforeach
             </nav>
         </div>

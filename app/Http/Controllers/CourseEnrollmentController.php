@@ -306,37 +306,65 @@ class CourseEnrollmentController extends Controller
         $user = $request->user();
         abort_unless($user?->role === User::ROLE_STUDENT, 403);
 
-        $enrollment = CourseEnrollment::with(['course.weeks.sessions.items', 'trainer', 'progressItems'])
+        $enrollment = CourseEnrollment::with(['course.weeks.sessions.items.quizQuestions', 'trainer', 'progressItems'])
             ->where('course_id', $course->id)
             ->where('student_id', $user->id)
             ->first();
 
         abort_unless($enrollment, 403, 'You can open only enrolled courses.');
 
-        $itemIds = CourseSessionItem::whereHas('session.week', fn ($q) => $q->where('course_id', $course->id))->pluck('id');
+        $itemIds = CourseSessionItem::whereHas('session.week', fn ($q) => $q->where('course_id', $course->id))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values();
 
-        foreach ($itemIds as $itemId) {
-            CourseProgress::firstOrCreate(
-                [
-                    'course_enrollment_id' => $enrollment->id,
-                    'course_session_item_id' => $itemId,
-                ],
-                [
-                    'completed_at' => null,
-                ]
-            );
+        if ($itemIds->isNotEmpty()) {
+            $existingProgressItemIds = CourseProgress::query()
+                ->where('course_enrollment_id', $enrollment->id)
+                ->whereIn('course_session_item_id', $itemIds)
+                ->pluck('course_session_item_id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+
+            $missingItemIds = array_values(array_diff($itemIds->all(), $existingProgressItemIds));
+
+            if ($missingItemIds !== []) {
+                $now = now();
+                $rows = array_map(
+                    fn (int $itemId): array => [
+                        'course_enrollment_id' => $enrollment->id,
+                        'course_session_item_id' => $itemId,
+                        'completed_at' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
+                    $missingItemIds
+                );
+
+                CourseProgress::insert($rows);
+            }
         }
 
         $totalItems = $itemIds->count();
         $completedItems = $enrollment->progressItems()->whereNotNull('completed_at')->count();
-        $enrollment = $enrollment->fresh(['course.weeks.sessions.items', 'trainer', 'progressItems']);
+        $enrollment = $enrollment->fresh(['course.weeks.sessions.items.quizQuestions', 'trainer', 'progressItems']);
 
         $latestSubmissions = CourseItemSubmission::query()
+            ->with(['quizAnswers.question'])
             ->where('course_enrollment_id', $enrollment->id)
             ->latest('submitted_at')
             ->get()
             ->groupBy('course_session_item_id')
             ->map->first();
+
+        $quizAttemptCounts = CourseItemSubmission::query()
+            ->where('course_enrollment_id', $enrollment->id)
+            ->where('submission_type', CourseSessionItem::TYPE_QUIZ)
+            ->selectRaw('course_session_item_id, COUNT(*) as total')
+            ->groupBy('course_session_item_id')
+            ->pluck('total', 'course_session_item_id')
+            ->map(fn ($total): int => (int) $total)
+            ->all();
 
         $completedItemIds = $enrollment->progressItems
             ->whereNotNull('completed_at')
@@ -357,6 +385,7 @@ class CourseEnrollmentController extends Controller
             'totalItems' => $totalItems,
             'completedItems' => $completedItems,
             'latestSubmissions' => $latestSubmissions,
+            'quizAttemptCounts' => $quizAttemptCounts,
             'completedItemIds' => $completedItemIds,
             'nextPendingItemId' => $nextPendingItemId,
         ]);

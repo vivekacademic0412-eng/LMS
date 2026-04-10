@@ -52,11 +52,13 @@
                             @endif
                         </article>
 
+                        @include('dashboard.partials.student.progress-analytics')
+
                         <div class="student-column-group">
                             <span class="student-column-label">Learning Hub</span>
             @endif
 
-            <section @class(['dashboard-section' => $isStudent])>
+            <section @class(['dashboard-section' => $isStudent, 'student-learning-section' => $isStudent])>
                 <div class="section-head">
                     <div>
                         <h2>{{ $learningTitle }}</h2>
@@ -123,55 +125,43 @@
                 <section class="dashboard-section">
                     <div class="section-head">
                         <div>
-                            <h2>My Submissions</h2>
-                            <p>Your latest task and quiz submissions, with quick access back to the lesson.</p>
+                            <h2>Recent Activity Feed</h2>
+                            <p>Latest learning activity across completed items, pending reviews, revision requests, and earned certificates.</p>
                         </div>
                         <a class="section-link" href="{{ route('student.history') }}">Open history -&gt;</a>
                     </div>
 
-                    <div class="submission-grid">
-                        @forelse ($studentRecentSubmissions as $submission)
-                            <article class="submission-card submission-card--{{ $submission['status_tone'] }}">
-                                <div class="submission-head">
-                                    <div class="submission-head-left">
-                                        <strong>{{ $submission['title'] }}</strong>
-                                        <div class="submission-meta">{{ $submission['course_title'] }} &middot; {{ $submission['submitted_at_human'] ?: 'Recently submitted' }}</div>
+                    <div class="activity-feed-grid">
+                        @forelse (collect($studentAnalytics['activity_feed'] ?? []) as $activity)
+                            <article class="activity-feed-card activity-feed-card--{{ $activity['tone'] ?? 'completed' }}">
+                                <div class="activity-feed-head">
+                                    <div class="activity-feed-copy">
+                                        <div class="activity-feed-topline">{{ $activity['occurred_at_human'] ?? 'Recently' }}</div>
+                                        <strong>{{ $activity['title'] ?? 'Activity' }}</strong>
+                                        <p>{{ $activity['description'] ?? '' }}</p>
                                     </div>
-                                    <div class="submission-badges">
-                                        <span class="demo-status">{{ $submission['submission_type'] }}</span>
-                                        <span class="demo-status">{{ $submission['status_label'] }}</span>
+                                    <div class="activity-feed-badges">
+                                        <span class="activity-feed-badge activity-feed-badge--{{ $activity['tone'] ?? 'completed' }}">
+                                            {{ $activity['status_label'] ?? 'Activity' }}
+                                        </span>
                                     </div>
                                 </div>
 
-                                @if (!empty($submission['answer_text']))
-                                    <div class="submission-answer-box">
-                                        <h4>Answer</h4>
-                                        <div class="submission-answer">{{ \Illuminate\Support\Str::limit($submission['answer_text'], 180) }}</div>
-                                    </div>
-                                @endif
-
-                                @if (!empty($submission['file_name']))
-                                    <div class="submission-doc-box">
-                                        <div class="doc-name">{{ $submission['file_name'] }}</div>
-                                        @if (!empty($submission['download_route']))
-                                            <a class="btn btn-soft" href="{{ $submission['download_route'] }}">Download File</a>
-                                        @endif
-                                    </div>
-                                @endif
-
-                                @if (!empty($submission['review_notes']))
-                                    <div class="submission-answer-box">
-                                        <h4>Review Notes</h4>
-                                        <div class="submission-answer">{{ \Illuminate\Support\Str::limit($submission['review_notes'], 180) }}</div>
-                                    </div>
+                                @if (!empty($activity['meta']))
+                                    <div class="activity-feed-meta">{{ $activity['meta'] }}</div>
                                 @endif
 
                                 <div class="submission-actions">
-                                    <a class="btn btn-soft" href="{{ $submission['open_route'] }}">Open Lesson</a>
+                                    @if (!empty($activity['route']))
+                                        <a class="btn btn-soft" href="{{ $activity['route'] }}">{{ $activity['route_label'] ?? 'Open' }}</a>
+                                    @endif
+                                    @if (!empty($activity['secondary_route']))
+                                        <a class="btn" href="{{ $activity['secondary_route'] }}">{{ $activity['secondary_label'] ?? 'Open' }}</a>
+                                    @endif
                                 </div>
                             </article>
                         @empty
-                            <div class="submission-empty">No submissions yet. When you submit a task or quiz, it will appear here.</div>
+                            <div class="submission-empty">No recent activity yet. Your completed lessons, submissions, and certificates will appear here automatically.</div>
                         @endforelse
                     </div>
                 </section>

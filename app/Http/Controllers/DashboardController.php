@@ -18,6 +18,8 @@ use App\Services\StudentCertificateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -42,23 +44,25 @@ class DashboardController extends Controller
             abort(403, 'Your account is inactive.');
         }
 
-        $stats = [
-            'users' => User::count(),
-            'categories' => CourseCategory::count(),
-            'courses' => Course::count(),
-            'enrollments' => CourseEnrollment::count(),
-            'active_users' => User::where('is_active', true)->count(),
-            'inactive_users' => User::where('is_active', false)->count(),
-            'students' => User::where('role', User::ROLE_STUDENT)->count(),
-            'trainers' => User::where('role', User::ROLE_TRAINER)->count(),
-            'live_quizzes' => Schema::hasTable('course_session_items') && Schema::hasColumn('course_session_items', 'is_live')
-                ? CourseSessionItem::where('item_type', CourseSessionItem::TYPE_QUIZ)
-                    ->where('is_live', true)
-                    ->count()
-                : 0,
-            'pending_reviews' => $this->countLatestPendingReviews(),
-            'completed_certificates' => $this->countCompletedCertificates(),
-        ];
+        $stats = Cache::remember('dashboard.stats', now()->addSeconds(60), function (): array {
+            return [
+                'users' => User::count(),
+                'categories' => CourseCategory::count(),
+                'courses' => Course::count(),
+                'enrollments' => CourseEnrollment::count(),
+                'active_users' => User::where('is_active', true)->count(),
+                'inactive_users' => User::where('is_active', false)->count(),
+                'students' => User::where('role', User::ROLE_STUDENT)->count(),
+                'trainers' => User::where('role', User::ROLE_TRAINER)->count(),
+                'live_quizzes' => Schema::hasTable('course_session_items') && Schema::hasColumn('course_session_items', 'is_live')
+                    ? CourseSessionItem::where('item_type', CourseSessionItem::TYPE_QUIZ)
+                        ->where('is_live', true)
+                        ->count()
+                    : 0,
+                'pending_reviews' => $this->countLatestPendingReviews(),
+                'completed_certificates' => $this->countCompletedCertificates(),
+            ];
+        });
 
         $studentResumeItem = null;
         $studentPendingActionItems = collect();
@@ -69,17 +73,27 @@ class DashboardController extends Controller
         ];
         $studentRecentSubmissions = collect();
         $studentCertificates = collect();
+        $studentAnalytics = $this->emptyStudentAnalytics();
 
         if ($user->role === User::ROLE_STUDENT) {
-            $studentDashboard = $this->resolveStudentDashboardData($user);
+            $studentDashboard = Cache::remember(
+                'dashboard.student.'.$user->id,
+                now()->addSeconds(60),
+                fn () => $this->resolveStudentDashboardData($user)
+            );
             $learningItems = $studentDashboard['learningItems'];
             $studentResumeItem = $studentDashboard['resumeItem'];
             $studentPendingActionItems = $studentDashboard['pendingActionItems'];
             $studentPendingActionSummary = $studentDashboard['pendingActionSummary'];
             $studentRecentSubmissions = $studentDashboard['recentSubmissions'];
             $studentCertificates = $studentDashboard['certificates'];
+            $studentAnalytics = $studentDashboard['analytics'];
         } else {
-            $learningItems = $this->resolveLearningItems($user);
+            $learningItems = Cache::remember(
+                'dashboard.learning-items.'.$user->role.'.'.$user->id,
+                now()->addSeconds(60),
+                fn () => $this->resolveLearningItems($user)
+            );
         }
 
         $heroCourse = $learningItems->sortByDesc('progress_percent')->first();
@@ -105,44 +119,51 @@ class DashboardController extends Controller
             'courses' => $stats['courses'],
         ];
 
-        $recommendedCourses = Course::query()
-            ->with(['category', 'creator'])
-            ->latest('id')
-            ->take(6)
-            ->get()
-            ->map(function (Course $course): array {
-                return [
-                    'id' => $course->id,
-                    'title' => $course->title,
-                    'category' => $course->category?->name ?? 'General',
-                    'provider' => $course->creator?->name ?? 'LMS Academy',
-                    'hours' => max(1, (int) $course->duration_hours),
-                ];
-            });
+        $recommendedCourses = Cache::remember('dashboard.recommended-courses', now()->addMinutes(5), function () {
+            return Course::query()
+                ->with(['category', 'creator'])
+                ->latest('id')
+                ->take(6)
+                ->get()
+                ->map(function (Course $course): array {
+                    return [
+                        'id' => $course->id,
+                        'title' => $course->title,
+                        'category' => $course->category?->name ?? 'General',
+                        'provider' => $course->creator?->name ?? 'LMS Academy',
+                        'hours' => max(1, (int) $course->duration_hours),
+                    ];
+                });
+        });
 
-        $topics = CourseCategory::query()
-            ->withCount('courses')
-            ->orderByDesc('courses_count')
-            ->take(8)
-            ->get()
-            ->map(fn (CourseCategory $category): array => [
-                'name' => $category->name,
-                'count' => (int) $category->courses_count,
-            ]);
+        $topics = Cache::remember('dashboard.topics', now()->addMinutes(5), function () {
+            return CourseCategory::query()
+                ->withCount('courses')
+                ->orderByDesc('courses_count')
+                ->take(8)
+                ->get()
+                ->map(fn (CourseCategory $category): array => [
+                    'name' => $category->name,
+                    'count' => (int) $category->courses_count,
+                ]);
+        });
 
         $notifications = collect();
         if (Schema::hasTable('notifications')) {
-            $notifications = $user->notifications()
-                ->latest()
-                ->take(5)
-                ->get();
+            $notifications = Cache::remember(
+                'dashboard.notifications.'.$user->id,
+                now()->addSeconds(30),
+                fn () => $user->notifications()->latest()->take(5)->get()
+            );
         }
 
         $assignedCourseIds = [];
         if ($user->role === User::ROLE_TRAINER) {
-            $assignedCourseIds = CourseEnrollment::where('trainer_id', $user->id)
-                ->pluck('course_id')
-                ->all();
+            $assignedCourseIds = Cache::remember(
+                'dashboard.trainer.courses.'.$user->id,
+                now()->addSeconds(60),
+                fn () => CourseEnrollment::where('trainer_id', $user->id)->pluck('course_id')->all()
+            );
         }
 
         $demoAssignments = collect();
@@ -153,12 +174,16 @@ class DashboardController extends Controller
         $adminDemoSubmissions = collect();
         $demoTaskCooldownSeconds = DemoTaskSubmission::SHARED_DEMO_COOLDOWN_SECONDS;
         if ($dashboardMode === 'demo') {
-            $userAssignments = DemoTaskAssignment::query()
-                ->with(['demoTask.creator:id,role'])
-                ->where('user_id', $user->id)
-                ->latest('assigned_at')
-                ->latest('id')
-                ->get();
+            $userAssignments = Cache::remember(
+                'dashboard.demo.assignments.'.$user->id,
+                now()->addSeconds(30),
+                fn () => DemoTaskAssignment::query()
+                    ->with(['demoTask.creator:id,role'])
+                    ->where('user_id', $user->id)
+                    ->latest('assigned_at')
+                    ->latest('id')
+                    ->get()
+            );
 
             $demoNow = now();
             $latestDemoSubmissions = DemoTaskSubmission::query()
@@ -189,10 +214,12 @@ class DashboardController extends Controller
 
             $demoTasks = $demoAssignments->pluck('task');
 
-            $demoCategories = CourseCategory::with([
-                'courses' => fn ($q) => $q->with(['category', 'subcategory'])->orderBy('title'),
-                'children.courses' => fn ($q) => $q->with(['category', 'subcategory'])->orderBy('title'),
-            ])->whereNull('parent_id')->orderBy('name')->get();
+            $demoCategories = Cache::remember('dashboard.demo.categories', now()->addMinutes(5), function () {
+                return CourseCategory::with([
+                    'courses' => fn ($q) => $q->with(['category', 'subcategory'])->orderBy('title'),
+                    'children.courses' => fn ($q) => $q->with(['category', 'subcategory'])->orderBy('title'),
+                ])->whereNull('parent_id')->orderBy('name')->get();
+            });
 
             $demoFeatureVideosQuery = DemoFeatureVideo::query();
 
@@ -205,33 +232,37 @@ class DashboardController extends Controller
                 $demoFeatureVideosQuery->latest('id');
             }
 
-            $demoFeatureVideos = $demoFeatureVideosQuery->get();
+            $demoFeatureVideos = Cache::remember('dashboard.demo.feature-videos', now()->addMinutes(5), fn () => $demoFeatureVideosQuery->get());
 
             if (Schema::hasTable('demo_review_videos')) {
-                $demoReviewVideos = DemoReviewVideo::query()
-                    ->orderByRaw('CASE WHEN position IS NULL THEN 1 ELSE 0 END')
-                    ->orderBy('position')
-                    ->orderByDesc('id')
-                    ->get();
+                $demoReviewVideos = Cache::remember('dashboard.demo.review-videos', now()->addMinutes(5), function () {
+                    return DemoReviewVideo::query()
+                        ->orderByRaw('CASE WHEN position IS NULL THEN 1 ELSE 0 END')
+                        ->orderBy('position')
+                        ->orderByDesc('id')
+                        ->get();
+                });
             }
         }
 
         if (in_array($dashboardMode, ['admin', 'viewer'], true)) {
-            $demoTasks = DemoTask::withCount('assignments')->latest('id')->take(8)->get();
+            $demoTasks = Cache::remember('dashboard.demo.tasks', now()->addMinutes(5), fn () => DemoTask::withCount('assignments')->latest('id')->take(8)->get());
         }
 
         if ($dashboardMode === 'admin') {
-            $adminDemoSubmissions = DemoTaskSubmission::query()
-                ->with([
-                    'assignment.demoTask:id,title',
-                    'assignment.user:id,name,email,role,is_active,created_at',
-                    'assignment.assigner:id,name',
-                ])
-                ->latest('submitted_at')
-                ->take(6)
-                ->get()
-                ->filter(fn (DemoTaskSubmission $submission): bool => (bool) $submission->assignment?->user)
-                ->values();
+            $adminDemoSubmissions = Cache::remember('dashboard.demo.submissions', now()->addSeconds(30), function () {
+                return DemoTaskSubmission::query()
+                    ->with([
+                        'assignment.demoTask:id,title',
+                        'assignment.user:id,name,email,role,is_active,created_at',
+                        'assignment.assigner:id,name',
+                    ])
+                    ->latest('submitted_at')
+                    ->take(6)
+                    ->get()
+                    ->filter(fn (DemoTaskSubmission $submission): bool => (bool) $submission->assignment?->user)
+                    ->values();
+            });
         }
 
         return compact(
@@ -253,6 +284,7 @@ class DashboardController extends Controller
             'studentPendingActionSummary',
             'studentRecentSubmissions',
             'studentCertificates',
+            'studentAnalytics',
             'demoAssignments',
             'demoCategories',
             'demoFeatureVideos',
@@ -261,6 +293,132 @@ class DashboardController extends Controller
             'adminDemoSubmissions',
             'demoTaskCooldownSeconds'
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyStudentAnalytics(): array
+    {
+        return [
+            'stats' => [
+                [
+                    'label' => 'Courses',
+                    'value' => 0,
+                    'suffix' => '',
+                    'decimals' => 0,
+                    'caption' => 'enrolled right now',
+                    'tone' => 'blue',
+                ],
+                [
+                    'label' => 'Completion',
+                    'value' => 0,
+                    'suffix' => '%',
+                    'decimals' => 0,
+                    'caption' => 'overall progress',
+                    'tone' => 'indigo',
+                ],
+                [
+                    'label' => 'Certificates',
+                    'value' => 0,
+                    'suffix' => '',
+                    'decimals' => 0,
+                    'caption' => 'earned so far',
+                    'tone' => 'green',
+                ],
+                [
+                    'label' => 'Pending Submissions',
+                    'value' => 0,
+                    'suffix' => '',
+                    'decimals' => 0,
+                    'caption' => 'awaiting review or update',
+                    'tone' => 'amber',
+                ],
+            ],
+            'weekly' => [
+                'default_view' => 'hours',
+                'views' => [
+                    'hours' => [
+                        'label' => 'Hours spent',
+                        'summary_label' => 'This week',
+                        'summary_value' => 0.0,
+                        'summary_suffix' => 'h',
+                        'summary_decimals' => 1,
+                        'secondary_label' => 'Daily average',
+                        'secondary_value' => 0.0,
+                        'secondary_suffix' => 'h',
+                        'secondary_decimals' => 1,
+                        'max' => 1.0,
+                        'series' => collect(),
+                    ],
+                    'items' => [
+                        'label' => 'Items completed',
+                        'summary_label' => 'This week',
+                        'summary_value' => 0,
+                        'summary_suffix' => '',
+                        'summary_decimals' => 0,
+                        'secondary_label' => 'Active days',
+                        'secondary_value' => 0,
+                        'secondary_suffix' => '',
+                        'secondary_decimals' => 0,
+                        'max' => 1,
+                        'series' => collect(),
+                    ],
+                    'quiz_scores' => [
+                        'label' => 'Quiz scores',
+                        'summary_label' => 'Average',
+                        'summary_value' => 0,
+                        'summary_suffix' => '%',
+                        'summary_decimals' => 0,
+                        'secondary_label' => 'Quiz days',
+                        'secondary_value' => 0,
+                        'secondary_suffix' => '',
+                        'secondary_decimals' => 0,
+                        'max' => 100,
+                        'series' => collect(),
+                    ],
+                ],
+            ],
+            'completion' => [
+                'overall_percent' => 0,
+                'completed_courses' => 0,
+                'in_progress_courses' => 0,
+                'not_started_courses' => 0,
+                'course_count' => 0,
+                'completed_items' => 0,
+                'total_items' => 0,
+                'segments' => collect(),
+                'series' => collect(),
+            ],
+            'radar' => [
+                'series' => collect(),
+                'goal_label' => 'Target = 100% completion across active categories',
+            ],
+            'heatmap' => [
+                'weeks' => collect(),
+                'active_days' => 0,
+                'start_label' => '',
+                'end_label' => '',
+            ],
+            'quiz' => [
+                'average_score' => 0,
+                'attempted' => 0,
+                'reviewed' => 0,
+                'pending' => 0,
+                'revision_requested' => 0,
+                'series' => collect(),
+                'course_series' => collect(),
+                'derived_from_reviews' => false,
+            ],
+            'streak' => [
+                'current' => 0,
+                'longest' => 0,
+                'active_days' => 0,
+                'tracker' => collect(),
+                'tracker_active' => 0,
+            ],
+            'activity_feed' => collect(),
+        ];
     }
 
     public function markAllNotificationsRead(Request $request): RedirectResponse
@@ -622,7 +780,8 @@ class DashboardController extends Controller
      *     pendingActionItems: \Illuminate\Support\Collection<int, array<string, mixed>>,
      *     pendingActionSummary: array{tasks:int, live_quizzes:int, total:int},
      *     recentSubmissions: \Illuminate\Support\Collection<int, array<string, mixed>>,
-     *     certificates: \Illuminate\Support\Collection<int, array<string, mixed>>
+     *     certificates: \Illuminate\Support\Collection<int, array<string, mixed>>,
+     *     analytics: array<string, mixed>
      * }
      */
     private function resolveStudentDashboardData(User $user): array
@@ -638,6 +797,10 @@ class DashboardController extends Controller
         $learningItems = collect();
         $pendingActionItems = collect();
         $certificates = collect();
+        $activityByDate = [];
+        $activityFeed = collect();
+        $overallCompletedItems = 0;
+        $overallTotalItems = 0;
 
         foreach ($enrollments as $index => $enrollment) {
             $course = $enrollment->course;
@@ -667,6 +830,7 @@ class DashboardController extends Controller
                             'session_id' => (int) $session->id,
                             'session_number' => (int) ($session->session_number ?? 0),
                             'session_title' => $session->title ?: 'Session',
+                            'item_type_label' => ucwords(str_replace('_', ' ', (string) $item->item_type)),
                             'route' => $this->buildStudentCourseItemRoute(
                                 (int) $course->id,
                                 (int) $week->id,
@@ -678,14 +842,56 @@ class DashboardController extends Controller
                 }
             }
 
+            $courseItemsById = $courseItems->keyBy('item_id');
             $totalItems = max(1, $courseItems->count());
+            $overallTotalItems += $courseItems->count();
             $completedItems = min(
                 $totalItems,
                 $courseItems->whereIn('item_id', $completedItemIds)->count()
             );
+            $overallCompletedItems += $completedItems;
             $progressPercent = (int) round(($completedItems / $totalItems) * 100);
             $hoursTotal = max(1, (int) ($course->duration_hours ?? 1));
             $hoursDone = round(($hoursTotal * $progressPercent) / 100, 1);
+            $estimatedHoursPerItem = $courseItems->count() > 0
+                ? round($hoursTotal / $courseItems->count(), 2)
+                : 0.0;
+
+            foreach ($enrollment->progressItems->whereNotNull('completed_at') as $progressRow) {
+                $completedAt = $progressRow->completed_at;
+
+                if (! $completedAt) {
+                    continue;
+                }
+
+                $dateKey = $completedAt->toDateString();
+                $activityByDate[$dateKey] = [
+                    'activity_count' => (int) (($activityByDate[$dateKey]['activity_count'] ?? 0) + 1),
+                    'estimated_hours' => round((float) (($activityByDate[$dateKey]['estimated_hours'] ?? 0.0) + $estimatedHoursPerItem), 2),
+                    'items_completed' => (int) (($activityByDate[$dateKey]['items_completed'] ?? 0) + 1),
+                    'quiz_score_total' => (int) ($activityByDate[$dateKey]['quiz_score_total'] ?? 0),
+                    'quiz_score_count' => (int) ($activityByDate[$dateKey]['quiz_score_count'] ?? 0),
+                ];
+
+                $itemMeta = $courseItemsById->get((int) $progressRow->course_session_item_id);
+
+                $activityFeed->push([
+                    'timestamp' => (int) $completedAt->timestamp,
+                    'status_label' => 'Completed',
+                    'tone' => 'completed',
+                    'title' => (string) ($itemMeta['title'] ?? 'Learning item completed'),
+                    'description' => trim(((string) ($itemMeta['item_type_label'] ?? 'Learning item')).' completed in '.($course->title ?: 'Course')),
+                    'meta' => trim(implode(' | ', array_filter([
+                        ! empty($itemMeta['week_number']) ? 'Week '.$itemMeta['week_number'] : null,
+                        ! empty($itemMeta['session_number']) ? 'Session '.$itemMeta['session_number'] : null,
+                    ]))),
+                    'occurred_at_human' => $completedAt->diffForHumans(),
+                    'route' => (string) ($itemMeta['route'] ?? route('student.courses.show', $course)),
+                    'route_label' => 'Open lesson',
+                    'secondary_route' => route('student.courses.show', $course),
+                    'secondary_label' => 'Course',
+                ]);
+            }
 
             $nextPendingItem = $courseItems->first(
                 fn (array $courseItem) => ! in_array($courseItem['item_id'], $completedItemIds, true)
@@ -758,12 +964,77 @@ class DashboardController extends Controller
             }
         }
 
-        $recentSubmissions = CourseItemSubmission::query()
-            ->with(['item.session.week.course', 'reviewer'])
+        $allSubmissions = CourseItemSubmission::query()
+            ->with(['item.session.week.course.category', 'quizAnswers.question', 'reviewer'])
             ->whereHas('enrollment', fn ($query) => $query->where('student_id', $user->id))
             ->latest('submitted_at')
+            ->latest('id')
+            ->get();
+
+        $latestSubmissions = $allSubmissions
+            ->groupBy(fn (CourseItemSubmission $submission): string => $submission->course_enrollment_id.'-'.$submission->course_session_item_id)
+            ->map->first()
+            ->values();
+
+        foreach ($allSubmissions as $submission) {
+            $submittedAt = $submission->submitted_at;
+
+            if (! $submittedAt) {
+                continue;
+            }
+
+            $dateKey = $submittedAt->toDateString();
+            $quizScore = $submission->submission_type === CourseSessionItem::TYPE_QUIZ
+                ? $this->resolveQuizAnalyticsScore($submission)
+                : 0;
+            $activityByDate[$dateKey] = [
+                'activity_count' => (int) (($activityByDate[$dateKey]['activity_count'] ?? 0) + 1),
+                'estimated_hours' => round((float) ($activityByDate[$dateKey]['estimated_hours'] ?? 0.0), 2),
+                'items_completed' => (int) ($activityByDate[$dateKey]['items_completed'] ?? 0),
+                'quiz_score_total' => (int) (($activityByDate[$dateKey]['quiz_score_total'] ?? 0) + $quizScore),
+                'quiz_score_count' => (int) (($activityByDate[$dateKey]['quiz_score_count'] ?? 0) + ($submission->submission_type === CourseSessionItem::TYPE_QUIZ ? 1 : 0)),
+            ];
+
+            $item = $submission->item;
+            $session = $item?->session;
+            $week = $session?->week;
+            $course = $week?->course;
+            $isQuiz = $submission->submission_type === CourseSessionItem::TYPE_QUIZ;
+            $statusLabel = match ($submission->review_status) {
+                CourseItemSubmission::STATUS_REVIEWED => 'Completed',
+                CourseItemSubmission::STATUS_REVISION_REQUESTED => 'Revision Needed',
+                default => 'Pending Review',
+            };
+            $tone = match ($submission->review_status) {
+                CourseItemSubmission::STATUS_REVIEWED => 'completed',
+                CourseItemSubmission::STATUS_REVISION_REQUESTED => 'revision',
+                default => 'pending',
+            };
+
+            $activityFeed->push([
+                'timestamp' => (int) $submittedAt->timestamp,
+                'status_label' => $statusLabel,
+                'tone' => $tone,
+                'title' => $item?->title ?? ($isQuiz ? 'Quiz submission' : 'Task submission'),
+                'description' => ($isQuiz ? 'Quiz update in ' : 'Submission in ').($course?->title ?? 'Course'),
+                'meta' => trim(implode(' | ', array_filter([
+                    $submission->reviewStatusLabel(),
+                    $item ? ucwords(str_replace('_', ' ', (string) $submission->submission_type)) : null,
+                ]))),
+                'occurred_at_human' => $submittedAt->diffForHumans(),
+                'route' => ($course && $week && $session && $item)
+                    ? $this->buildStudentCourseItemRoute((int) $course->id, (int) $week->id, (int) $session->id, (int) $item->id)
+                    : route('student.courses'),
+                'route_label' => $tone === 'revision' ? 'Revise now' : 'Open lesson',
+                'secondary_route' => $submission->file_path
+                    ? route('course-item-submissions.download', $submission)
+                    : null,
+                'secondary_label' => $submission->file_path ? 'Download file' : null,
+            ]);
+        }
+
+        $recentSubmissions = $allSubmissions
             ->take(5)
-            ->get()
             ->map(function (CourseItemSubmission $submission): array {
                 $item = $submission->item;
                 $session = $item?->session;
@@ -788,6 +1059,47 @@ class DashboardController extends Controller
                         : route('student.courses'),
                 ];
             });
+
+        $latestQuizSubmissions = $latestSubmissions
+            ->filter(fn (CourseItemSubmission $submission): bool => $submission->submission_type === CourseSessionItem::TYPE_QUIZ)
+            ->values();
+
+        $pendingSubmissionCount = $latestSubmissions
+            ->filter(fn (CourseItemSubmission $submission): bool => in_array(
+                $submission->review_status,
+                [
+                    CourseItemSubmission::STATUS_PENDING_REVIEW,
+                    CourseItemSubmission::STATUS_REVISION_REQUESTED,
+                ],
+                true
+            ))
+            ->count();
+
+        $sortedCertificates = $certificates
+            ->sortByDesc('issued_at_timestamp')
+            ->values();
+
+        foreach ($sortedCertificates as $certificate) {
+            $issuedAt = $certificate['issued_at'] ?? null;
+
+            if (! ($issuedAt instanceof Carbon)) {
+                continue;
+            }
+
+            $activityFeed->push([
+                'timestamp' => (int) $issuedAt->timestamp,
+                'status_label' => 'Certificate',
+                'tone' => 'certificate',
+                'title' => (string) ($certificate['course_title'] ?? 'Course certificate'),
+                'description' => 'Certificate unlocked in '.($certificate['category'] ?? 'General'),
+                'meta' => 'Issued '.$issuedAt->format('M d, Y'),
+                'occurred_at_human' => $issuedAt->diffForHumans(),
+                'route' => (string) ($certificate['download_pdf_route'] ?? route('student.certificates')),
+                'route_label' => 'Download PDF',
+                'secondary_route' => $certificate['download_svg_route'] ?? null,
+                'secondary_label' => ! empty($certificate['download_svg_route']) ? 'SVG' : null,
+            ]);
+        }
 
         $resumeCourse = $learningItems->first(fn (array $item) => (bool) $item['has_pending_resume'])
             ?: $learningItems->first();
@@ -821,7 +1133,17 @@ class DashboardController extends Controller
                 'total' => $pendingActionItems->count(),
             ],
             'recentSubmissions' => $recentSubmissions,
-            'certificates' => $certificates->sortByDesc('issued_at_timestamp')->take(4)->values(),
+            'certificates' => $sortedCertificates->take(4)->values(),
+            'analytics' => $this->buildStudentAnalytics(
+                learningItems: $learningItems->values(),
+                activityByDate: $activityByDate,
+                latestQuizSubmissions: $latestQuizSubmissions,
+                overallCompletedItems: $overallCompletedItems,
+                overallTotalItems: $overallTotalItems,
+                certificates: $sortedCertificates,
+                pendingSubmissionCount: $pendingSubmissionCount,
+                activityFeed: $activityFeed->sortByDesc('timestamp')->take(12)->values()
+            ),
         ];
     }
 
@@ -833,6 +1155,420 @@ class DashboardController extends Controller
             'session' => $sessionId,
             'item' => $itemId,
         ]).'#learning-workspace';
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $learningItems
+     * @param  array<string, array{activity_count:int, estimated_hours:float, items_completed:int, quiz_score_total:int, quiz_score_count:int}>  $activityByDate
+     * @param  \Illuminate\Support\Collection<int, \App\Models\CourseItemSubmission>  $latestQuizSubmissions
+     * @return array<string, mixed>
+     */
+    private function buildStudentAnalytics(
+        $learningItems,
+        array $activityByDate,
+        $latestQuizSubmissions,
+        int $overallCompletedItems,
+        int $overallTotalItems,
+        $certificates,
+        int $pendingSubmissionCount,
+        $activityFeed
+    ): array {
+        $analytics = $this->emptyStudentAnalytics();
+        $today = now()->startOfDay();
+        $overallCompletionPercent = $overallTotalItems > 0
+            ? (int) round(($overallCompletedItems / $overallTotalItems) * 100)
+            : 0;
+
+        $courseCount = $learningItems->count();
+        $completedCourses = $learningItems->where('progress_percent', '>=', 100)->count();
+        $inProgressCourses = $learningItems->filter(
+            fn (array $item): bool => (int) ($item['progress_percent'] ?? 0) > 0
+                && (int) ($item['progress_percent'] ?? 0) < 100
+        )->count();
+        $notStartedCourses = max(0, $courseCount - $completedCourses - $inProgressCourses);
+
+        $completionSeries = $learningItems
+            ->sortByDesc('progress_percent')
+            ->take(6)
+            ->values()
+            ->map(fn (array $item): array => [
+                'course_id' => (int) ($item['course_id'] ?? 0),
+                'title' => (string) ($item['title'] ?? 'Course'),
+                'category' => (string) ($item['category'] ?? 'General'),
+                'percent' => (int) ($item['progress_percent'] ?? 0),
+                'hours_done' => (float) ($item['hours_done'] ?? 0),
+                'hours_total' => (float) ($item['hours_total'] ?? 0),
+                'route' => (string) ($item['resume_route'] ?? route('student.courses')),
+            ]);
+
+        $completionSegments = collect([
+            [
+                'key' => 'completed',
+                'label' => 'Completed',
+                'value' => $completedCourses,
+                'color' => '#1f8d77',
+            ],
+            [
+                'key' => 'in_progress',
+                'label' => 'In Progress',
+                'value' => $inProgressCourses,
+                'color' => '#1f6fd3',
+            ],
+            [
+                'key' => 'not_started',
+                'label' => 'Not Started',
+                'value' => $notStartedCourses,
+                'color' => '#d7e3f4',
+            ],
+        ])->map(function (array $segment) use ($courseCount): array {
+            $segment['percent'] = $courseCount > 0
+                ? round(($segment['value'] / $courseCount) * 100, 2)
+                : 0.0;
+
+            return $segment;
+        })->values();
+
+        $weeklyDays = collect();
+        $weeklyWindowStart = $today->copy()->subDays(6);
+
+        for ($offset = 0; $offset < 7; $offset++) {
+            $day = $weeklyWindowStart->copy()->addDays($offset);
+            $dateKey = $day->toDateString();
+            $quizScoreCount = (int) ($activityByDate[$dateKey]['quiz_score_count'] ?? 0);
+
+            $weeklyDays->push([
+                'date' => $dateKey,
+                'label' => $day->format('D'),
+                'full_label' => $day->format('M j'),
+                'hours' => round((float) ($activityByDate[$dateKey]['estimated_hours'] ?? 0), 1),
+                'items' => (int) ($activityByDate[$dateKey]['items_completed'] ?? 0),
+                'quiz_score' => $quizScoreCount > 0
+                    ? (int) round(((int) ($activityByDate[$dateKey]['quiz_score_total'] ?? 0)) / $quizScoreCount)
+                    : 0,
+                'quiz_count' => $quizScoreCount,
+                'activity_count' => (int) ($activityByDate[$dateKey]['activity_count'] ?? 0),
+                'is_today' => $dateKey === $today->toDateString(),
+            ]);
+        }
+
+        $weeklyViews = [
+            'hours' => [
+                'label' => 'Hours spent',
+                'summary_label' => 'This week',
+                'summary_value' => round((float) $weeklyDays->sum('hours'), 1),
+                'summary_suffix' => 'h',
+                'summary_decimals' => 1,
+                'secondary_label' => 'Daily average',
+                'secondary_value' => round((float) ($weeklyDays->avg('hours') ?? 0), 1),
+                'secondary_suffix' => 'h',
+                'secondary_decimals' => 1,
+                'max' => max(1.0, (float) $weeklyDays->max('hours')),
+                'series' => $weeklyDays->map(fn (array $day): array => [
+                    'label' => $day['label'],
+                    'full_label' => $day['full_label'],
+                    'value' => (float) $day['hours'],
+                    'tooltip' => number_format((float) $day['hours'], 1).'h',
+                    'is_today' => $day['is_today'],
+                ]),
+            ],
+            'items' => [
+                'label' => 'Items completed',
+                'summary_label' => 'This week',
+                'summary_value' => (int) $weeklyDays->sum('items'),
+                'summary_suffix' => '',
+                'summary_decimals' => 0,
+                'secondary_label' => 'Active days',
+                'secondary_value' => (int) $weeklyDays->filter(fn (array $day): bool => (int) $day['items'] > 0)->count(),
+                'secondary_suffix' => '',
+                'secondary_decimals' => 0,
+                'max' => max(1, (int) $weeklyDays->max('items')),
+                'series' => $weeklyDays->map(fn (array $day): array => [
+                    'label' => $day['label'],
+                    'full_label' => $day['full_label'],
+                    'value' => (int) $day['items'],
+                    'tooltip' => (int) $day['items'].' item(s)',
+                    'is_today' => $day['is_today'],
+                ]),
+            ],
+            'quiz_scores' => [
+                'label' => 'Quiz scores',
+                'summary_label' => 'Average',
+                'summary_value' => (int) round((float) ($weeklyDays->filter(fn (array $day): bool => (int) $day['quiz_count'] > 0)->avg('quiz_score') ?? 0)),
+                'summary_suffix' => '%',
+                'summary_decimals' => 0,
+                'secondary_label' => 'Quiz days',
+                'secondary_value' => (int) $weeklyDays->filter(fn (array $day): bool => (int) $day['quiz_count'] > 0)->count(),
+                'secondary_suffix' => '',
+                'secondary_decimals' => 0,
+                'max' => 100,
+                'series' => $weeklyDays->map(fn (array $day): array => [
+                    'label' => $day['label'],
+                    'full_label' => $day['full_label'],
+                    'value' => (int) $day['quiz_score'],
+                    'tooltip' => (int) $day['quiz_score'].'%',
+                    'is_today' => $day['is_today'],
+                ]),
+            ],
+        ];
+
+        $quizSeriesSource = $latestQuizSubmissions
+            ->sortBy(fn (CourseItemSubmission $submission): int => (int) (optional($submission->submitted_at)->timestamp ?? 0))
+            ->values();
+
+        if ($quizSeriesSource->count() > 6) {
+            $quizSeriesSource = $quizSeriesSource->slice(-6)->values();
+        }
+
+        $quizSeries = $quizSeriesSource->values()->map(function (CourseItemSubmission $submission, int $index): array {
+            $item = $submission->item;
+            $session = $item?->session;
+            $week = $session?->week;
+            $course = $week?->course;
+            $score = $this->resolveQuizAnalyticsScore($submission);
+
+            return [
+                'label' => 'Q'.($index + 1),
+                'score' => $score,
+                'status' => $submission->reviewStatusLabel(),
+                'course_title' => $course?->title ?? 'Course',
+                'item_title' => $item?->title ?? 'Quiz',
+            ];
+        });
+
+        $courseQuizSeries = $latestQuizSubmissions
+            ->groupBy(function (CourseItemSubmission $submission): string {
+                $course = $submission->item?->session?->week?->course;
+
+                return (string) ($course?->id ?? 'enrollment-'.$submission->course_enrollment_id);
+            })
+            ->map(function ($submissions): array {
+                $course = $submissions->first()?->item?->session?->week?->course;
+                $scores = $submissions->map(
+                    fn (CourseItemSubmission $submission): int => $this->resolveQuizAnalyticsScore($submission)
+                );
+
+                return [
+                    'title' => $course?->title ?? 'Course',
+                    'category' => $course?->category?->name ?? 'General',
+                    'score' => (int) round((float) ($scores->avg() ?? 0)),
+                    'attempts' => $submissions->count(),
+                    'route' => $course ? route('student.courses.show', $course) : route('student.courses'),
+                ];
+            })
+            ->sortByDesc(fn (array $item): int => ((int) $item['attempts'] * 1000) + (int) $item['score'])
+            ->take(6)
+            ->values();
+
+        $categoryRadar = $learningItems
+            ->groupBy('category')
+            ->map(fn ($items, $category): array => [
+                'label' => (string) $category,
+                'value' => (int) round((float) $items->avg('progress_percent')),
+                'target' => 100,
+                'courses' => $items->count(),
+            ])
+            ->sortByDesc('courses')
+            ->take(6)
+            ->values();
+
+        $activeDateKeys = collect($activityByDate)
+            ->filter(fn (array $metrics): bool => (int) ($metrics['activity_count'] ?? 0) > 0)
+            ->keys()
+            ->sort()
+            ->values();
+
+        $currentStreak = 0;
+        $streakCursor = $today->copy();
+        while ((int) ($activityByDate[$streakCursor->toDateString()]['activity_count'] ?? 0) > 0) {
+            $currentStreak++;
+            $streakCursor->subDay();
+        }
+
+        $longestStreak = 0;
+        $runningStreak = 0;
+        $previousActiveDate = null;
+
+        foreach ($activeDateKeys as $dateKey) {
+            $activeDate = Carbon::parse($dateKey)->startOfDay();
+
+            if ($previousActiveDate && $previousActiveDate->diffInDays($activeDate) === 1) {
+                $runningStreak++;
+            } else {
+                $runningStreak = 1;
+            }
+
+            $longestStreak = max($longestStreak, $runningStreak);
+            $previousActiveDate = $activeDate;
+        }
+
+        $tracker = collect();
+        $trackerStart = $today->copy()->subDays(13);
+
+        for ($offset = 0; $offset < 14; $offset++) {
+            $day = $trackerStart->copy()->addDays($offset);
+            $dateKey = $day->toDateString();
+            $activityCount = (int) ($activityByDate[$dateKey]['activity_count'] ?? 0);
+
+            $tracker->push([
+                'date' => $dateKey,
+                'day' => (int) $day->format('j'),
+                'weekday' => $day->format('D'),
+                'activity_count' => $activityCount,
+                'is_active' => $activityCount > 0,
+                'is_today' => $dateKey === $today->toDateString(),
+            ]);
+        }
+
+        $heatmapDisplayStart = $today->copy()->subMonths(6)->startOfDay();
+        $heatmapCursor = $heatmapDisplayStart->copy()->startOfWeek(Carbon::MONDAY);
+        $heatmapEnd = $today->copy()->endOfWeek(Carbon::SUNDAY);
+        $heatmapWeeks = collect();
+
+        while ($heatmapCursor->lessThanOrEqualTo($heatmapEnd)) {
+            $weekStart = $heatmapCursor->copy();
+            $monthLabel = null;
+            $weekDays = collect();
+
+            for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
+                $day = $weekStart->copy()->addDays($dayOffset);
+                $dateKey = $day->toDateString();
+                $activityCount = (int) ($activityByDate[$dateKey]['activity_count'] ?? 0);
+                $isInRange = $day->greaterThanOrEqualTo($heatmapDisplayStart)
+                    && $day->lessThanOrEqualTo($today);
+
+                if ($monthLabel === null && $isInRange && ($day->day <= 7 || $heatmapWeeks->isEmpty())) {
+                    $monthLabel = $day->format('M');
+                }
+
+                $weekDays->push([
+                    'date' => $dateKey,
+                    'weekday' => $day->format('D'),
+                    'day' => (int) $day->format('j'),
+                    'activity_count' => $activityCount,
+                    'hours' => round((float) ($activityByDate[$dateKey]['estimated_hours'] ?? 0), 1),
+                    'level' => match (true) {
+                        $activityCount >= 6 => 4,
+                        $activityCount >= 4 => 3,
+                        $activityCount >= 2 => 2,
+                        $activityCount === 1 => 1,
+                        default => 0,
+                    },
+                    'is_in_range' => $isInRange,
+                    'is_today' => $dateKey === $today->toDateString(),
+                ]);
+            }
+
+            $heatmapWeeks->push([
+                'month_label' => $monthLabel,
+                'days' => $weekDays,
+            ]);
+
+            $heatmapCursor->addWeek();
+        }
+
+        $analytics['stats'] = [
+            [
+                'label' => 'Courses',
+                'value' => $courseCount,
+                'suffix' => '',
+                'decimals' => 0,
+                'caption' => 'enrolled right now',
+                'tone' => 'blue',
+            ],
+            [
+                'label' => 'Completion',
+                'value' => $overallCompletionPercent,
+                'suffix' => '%',
+                'decimals' => 0,
+                'caption' => $overallCompletedItems.' of '.$overallTotalItems.' items completed',
+                'tone' => 'indigo',
+            ],
+            [
+                'label' => 'Certificates',
+                'value' => $certificates->count(),
+                'suffix' => '',
+                'decimals' => 0,
+                'caption' => 'earned so far',
+                'tone' => 'green',
+            ],
+            [
+                'label' => 'Pending Submissions',
+                'value' => $pendingSubmissionCount,
+                'suffix' => '',
+                'decimals' => 0,
+                'caption' => 'awaiting review or update',
+                'tone' => 'amber',
+            ],
+        ];
+
+        $analytics['weekly'] = [
+            'default_view' => 'hours',
+            'views' => $weeklyViews,
+        ];
+
+        $analytics['completion'] = [
+            'overall_percent' => $overallCompletionPercent,
+            'completed_courses' => $completedCourses,
+            'in_progress_courses' => $inProgressCourses,
+            'not_started_courses' => $notStartedCourses,
+            'course_count' => $courseCount,
+            'completed_items' => $overallCompletedItems,
+            'total_items' => $overallTotalItems,
+            'segments' => $completionSegments,
+            'series' => $completionSeries,
+        ];
+
+        $analytics['radar'] = [
+            'series' => $categoryRadar,
+            'goal_label' => 'Target = 100% completion across active categories',
+        ];
+
+        $analytics['heatmap'] = [
+            'weeks' => $heatmapWeeks,
+            'active_days' => $activeDateKeys->count(),
+            'start_label' => $heatmapDisplayStart->format('M j'),
+            'end_label' => $today->format('M j'),
+        ];
+
+        $analytics['quiz'] = [
+            'average_score' => (int) round((float) ($quizSeries->avg('score') ?? 0)),
+            'attempted' => $latestQuizSubmissions->count(),
+            'reviewed' => $latestQuizSubmissions->where('review_status', CourseItemSubmission::STATUS_REVIEWED)->count(),
+            'pending' => $latestQuizSubmissions->where('review_status', CourseItemSubmission::STATUS_PENDING_REVIEW)->count(),
+            'revision_requested' => $latestQuizSubmissions->where('review_status', CourseItemSubmission::STATUS_REVISION_REQUESTED)->count(),
+            'series' => $quizSeries,
+            'course_series' => $courseQuizSeries,
+            'derived_from_reviews' => $latestQuizSubmissions->contains(
+                fn (CourseItemSubmission $submission): bool => $submission->submission_type === CourseSessionItem::TYPE_QUIZ
+                    && $submission->score_percent === null
+            ),
+        ];
+
+        $analytics['streak'] = [
+            'current' => $currentStreak,
+            'longest' => $longestStreak,
+            'active_days' => $activeDateKeys->count(),
+            'tracker' => $tracker,
+            'tracker_active' => $tracker->where('is_active', true)->count(),
+        ];
+
+        $analytics['activity_feed'] = $activityFeed->values();
+
+        return $analytics;
+    }
+
+    private function resolveQuizAnalyticsScore(CourseItemSubmission $submission): int
+    {
+        if ($submission->score_percent !== null) {
+            return max(0, min(100, (int) $submission->score_percent));
+        }
+
+        return match ($submission->review_status) {
+            CourseItemSubmission::STATUS_REVIEWED => 100,
+            CourseItemSubmission::STATUS_PENDING_REVIEW => 65,
+            CourseItemSubmission::STATUS_REVISION_REQUESTED => 30,
+            default => 0,
+        };
     }
 
     /**

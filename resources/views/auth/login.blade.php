@@ -41,7 +41,7 @@
             </div>
         </div>
         <div class="field remember-row">
-            <input id="remember" type="checkbox" name="remember" value="1">
+            <input id="remember" type="checkbox" name="remember" value="1" @checked(old('remember'))>
             <label for="remember">Remember me</label>
         </div>
         <button class="btn" type="submit">Login</button>

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CourseItemSubmission extends Model
 {
@@ -26,6 +27,11 @@ class CourseItemSubmission extends Model
         'submitted_by',
         'submission_type',
         'answer_text',
+        'score_earned',
+        'score_total',
+        'score_percent',
+        'passed',
+        'attempt_number',
         'file_path',
         'file_name',
         'file_mime',
@@ -42,6 +48,11 @@ class CourseItemSubmission extends Model
         return [
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
+            'score_earned' => 'integer',
+            'score_total' => 'integer',
+            'score_percent' => 'integer',
+            'passed' => 'boolean',
+            'attempt_number' => 'integer',
         ];
     }
 
@@ -89,5 +100,63 @@ class CourseItemSubmission extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function quizAnswers(): HasMany
+    {
+        return $this->hasMany(CourseQuizSubmissionAnswer::class, 'course_item_submission_id')
+            ->with('question')
+            ->orderBy('id');
+    }
+
+    public function hasScore(): bool
+    {
+        return $this->submission_type === CourseSessionItem::TYPE_QUIZ
+            && $this->score_total !== null
+            && $this->score_total > 0;
+    }
+
+    public function scoreLabel(): string
+    {
+        if (! $this->hasScore()) {
+            return 'Not graded';
+        }
+
+        return (int) ($this->score_earned ?? 0).' / '.(int) ($this->score_total ?? 0);
+    }
+
+    public function scorePercentLabel(): string
+    {
+        if ($this->score_percent === null) {
+            return '-';
+        }
+
+        return (int) $this->score_percent.'%';
+    }
+
+    public function passStatusLabel(): string
+    {
+        if ($this->submission_type !== CourseSessionItem::TYPE_QUIZ) {
+            return 'N/A';
+        }
+
+        return match ($this->passed) {
+            true => 'Passed',
+            false => 'Needs Retry',
+            default => 'Pending',
+        };
+    }
+
+    public function passStatusTone(): string
+    {
+        if ($this->submission_type !== CourseSessionItem::TYPE_QUIZ) {
+            return 'pending';
+        }
+
+        return match ($this->passed) {
+            true => 'done',
+            false => 'revision',
+            default => 'pending',
+        };
     }
 }

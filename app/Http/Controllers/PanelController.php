@@ -18,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -97,13 +98,15 @@ class PanelController extends Controller
         ];
 
         if ($role === User::ROLE_MANAGER_HR) {
-            return view('panels.show', $sharedData + $this->buildManagerHrPanelData() + [
+            $managerHrPanel = Cache::remember('panel.manager_hr', now()->addSeconds(60), fn () => $this->buildManagerHrPanelData());
+            return view('panels.show', $sharedData + $managerHrPanel + [
                 'managerHrReportExports' => $this->managerHrReportExports(),
             ]);
         }
 
         if ($role === User::ROLE_IT) {
-            return view('panels.show', $sharedData + $this->buildItPanelData());
+            $itPanel = Cache::remember('panel.it', now()->addSeconds(60), fn () => $this->buildItPanelData());
+            return view('panels.show', $sharedData + $itPanel);
         }
 
         return view('panels.show', $sharedData + [

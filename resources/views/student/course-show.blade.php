@@ -86,6 +86,17 @@
         $selectedSubmission = $selectedItem ? $latestSubmissions->get($selectedItem->id) : null;
         $selectedIsQuiz = $selectedItem?->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ;
         $selectedIsTask = $selectedItem?->item_type === \App\Models\CourseSessionItem::TYPE_TASK;
+        $selectedQuizQuestions = $selectedIsQuiz ? $selectedItem->quizQuestions : collect();
+        $selectedQuizAttemptsUsed = $selectedIsQuiz ? (int) ($quizAttemptCounts[$selectedItem->id] ?? 0) : 0;
+        $selectedQuizAttemptsRemaining = $selectedIsQuiz ? max(0, $selectedItem->quizMaxAttempts() - $selectedQuizAttemptsUsed) : 0;
+        $selectedQuizPassPercentage = $selectedIsQuiz ? $selectedItem->quizPassPercentage() : 70;
+        $selectedQuizTimeLimit = $selectedIsQuiz ? $selectedItem->quizTimeLimitMinutes() : null;
+        $selectedQuizConfigured = $selectedIsQuiz && $selectedQuizQuestions->isNotEmpty();
+        $selectedQuizCanSubmit = $selectedIsQuiz
+            && $selectedItem->is_live
+            && $selectedQuizConfigured
+            && ($selectedSubmission?->passed !== true)
+            && $selectedQuizAttemptsRemaining > 0;
         $selectedFormat = \Illuminate\Support\Str::lower((string) ($selectedItem?->cloudinary_format ?? ''));
         $selectedHasPrivateAsset = $selectedItem?->hasPrivateCloudinaryAsset() ?? false;
         $selectedCanPreviewVideo = $selectedHasPrivateAsset && $selectedItem?->cloudinary_resource_type === 'video';
@@ -96,7 +107,7 @@
         $selectedViewerUrl = $selectedItem ? route('course-session-items.media.view', $selectedItem) : null;
         $selectedEmbeddedViewerUrl = $selectedItem ? route('course-session-items.media.view', ['item' => $selectedItem, 'embed' => 1]) : null;
         $selectedStreamUrl = $selectedItem ? route('course-session-items.media.stream', $selectedItem) : null;
-        $selectedDownloadUrl = $selectedItem && ($selectedIsTask || $selectedIsQuiz)
+        $selectedDownloadUrl = $selectedItem && $selectedHasPrivateAsset && ($selectedIsTask || $selectedIsQuiz)
             ? route('course-session-items.media.download', $selectedItem)
             : null;
         $selectedSessionItems = $selectedSession ? $selectedSession->items : collect();
@@ -1340,32 +1351,7 @@
                             @endif
 
                             @if ($selectedIsQuiz)
-                                <div class="submission-box">
-                                    <strong>Submit your quiz answer</strong>
-                                    @if (! $selectedItem->is_live)
-                                        <p class="viewer-note">This quiz is not live yet. Your trainer must open it first.</p>
-                                    @else
-                                        <p class="viewer-note">Write your answer below and submit it from this same connected workspace.</p>
-                                        <form method="POST" action="{{ route('course-session-items.submit', $selectedItem) }}">
-                                            @csrf
-                                            <textarea name="answer_text" rows="4" placeholder="Type your answer here..." required>{{ old('answer_text') }}</textarea>
-                                            <button class="course-action course-action--soft" type="submit">Submit Quiz</button>
-                                        </form>
-                                    @endif
-
-                                    @if ($selectedSubmission)
-                                        <div class="submission-meta">
-                                            <span>Last answer submitted {{ optional($selectedSubmission->submitted_at)->diffForHumans() }}</span>
-                                            <span>Review status: {{ $selectedSubmission->reviewStatusLabel() }}</span>
-                                            @if ($selectedSubmission->answer_text)
-                                                <div class="submission-answer">{{ \Illuminate\Support\Str::limit($selectedSubmission->answer_text, 220) }}</div>
-                                            @endif
-                                            @if ($selectedSubmission->review_notes)
-                                                <div class="submission-answer">{{ \Illuminate\Support\Str::limit($selectedSubmission->review_notes, 220) }}</div>
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
+                                @include('student.partials.quiz-submission-box')
                             @endif
                         </section>
                     @else

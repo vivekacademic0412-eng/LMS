@@ -158,6 +158,10 @@
             flex-wrap: wrap;
             gap: 8px;
         }
+        .meta-stack {
+            display: grid;
+            gap: 4px;
+        }
         .btn-mini {
             border: 1px solid #cfd7e4;
             border-radius: 10px;
@@ -315,7 +319,20 @@
                                         <td><span class="item-type-chip">{{ $itemLabels[$item->item_type] ?? strtoupper(str_replace('_', ' ', $item->item_type)) }}</span></td>
                                         <td>{{ $item->title }}</td>
                                         <td>{{ $item->resource_type ?: '-' }}</td>
-                                    <td>{{ $item->content ?: '-' }}</td>
+                                    <td>
+                                        @if ($item->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ)
+                                            <div class="meta-stack">
+                                                <span>{{ $item->content ?: 'Scored quiz with configurable questions.' }}</span>
+                                                <span class="muted">
+                                                    {{ $item->quizQuestions->count() }} question{{ $item->quizQuestions->count() === 1 ? '' : 's' }}
+                                                    | Pass {{ $item->quizPassPercentage() }}%
+                                                    | Max {{ $item->quizMaxAttempts() }} attempt{{ $item->quizMaxAttempts() === 1 ? '' : 's' }}
+                                                </span>
+                                            </div>
+                                        @else
+                                            {{ $item->content ?: '-' }}
+                                        @endif
+                                    </td>
                                     <td>
                                         @if ($item->hasPrivateCloudinaryAsset())
                                             <a href="{{ route('course-session-items.media.view', $item) }}" class="secure-link">Open Secure Viewer</a>
@@ -327,7 +344,12 @@
                                     </td>
                                     @if ($canManage)
                                         <td>
-                                            <button type="button" class="btn-mini" data-modal-open="modal-item-edit-{{ $item->id }}">Edit</button>
+                                            <div class="row-actions">
+                                                <button type="button" class="btn-mini" data-modal-open="modal-item-edit-{{ $item->id }}">Edit</button>
+                                                @if ($item->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ)
+                                                    <a href="{{ route('course-session-items.quiz.edit', $item) }}" class="btn-mini">Manage Quiz</a>
+                                                @endif
+                                            </div>
                                         </td>
                                     @endif
                                 </tr>
@@ -553,6 +575,9 @@
                                     </div>
                                     <div class="actions-row">
                                         <button class="btn btn-soft" type="submit">Save</button>
+                                        @if ($item->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ)
+                                            <a href="{{ route('course-session-items.quiz.edit', $item) }}" class="btn btn-soft">Open Quiz Editor</a>
+                                        @endif
                                     </div>
                                 </form>
                             </div>

@@ -12,6 +12,7 @@ use App\Notifications\QuizLiveNotification;
 use App\Notifications\SubmissionReceivedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -48,6 +49,7 @@ class CourseItemSubmissionController extends Controller
             'item:id,title,course_session_id,item_type',
             'item.session:id,course_week_id,title,session_number',
             'item.session.week:id,course_id,week_number',
+            'quizAnswers.question',
             'reviewer:id,name',
         ])
             ->when(
@@ -132,6 +134,7 @@ class CourseItemSubmissionController extends Controller
             'item:id,title,course_session_id,item_type',
             'item.session:id,course_week_id,title,session_number',
             'item.session.week:id,course_id,week_number',
+            'quizAnswers.question',
             'reviewer:id,name',
         ])
             ->when(
@@ -180,70 +183,15 @@ class CourseItemSubmissionController extends Controller
 
         if ($item->item_type === CourseSessionItem::TYPE_QUIZ && ! $item->is_live) {
             throw ValidationException::withMessages([
-                'answer_text' => 'This quiz is not live yet.',
+                'quiz' => 'This quiz is not live yet.',
             ]);
         }
 
-        $data = $request->validate([
-            'answer_text' => ['nullable', 'string', 'max:4000'],
-            'submission_file' => ['nullable', 'file', 'max:307200'],
-        ]);
-
-        if ($item->item_type === CourseSessionItem::TYPE_TASK && ! $request->hasFile('submission_file')) {
-            throw ValidationException::withMessages([
-                'submission_file' => 'Upload your task file.',
-            ]);
+        if ($item->item_type === CourseSessionItem::TYPE_TASK) {
+            return $this->storeTaskSubmission($request, $item, $enrollment, $user->id);
         }
 
-        if ($item->item_type === CourseSessionItem::TYPE_QUIZ && empty($data['answer_text'])) {
-            throw ValidationException::withMessages([
-                'answer_text' => 'Please enter your quiz answer.',
-            ]);
-        }
-
-        $submissionPayload = [
-            'course_enrollment_id' => $enrollment->id,
-            'course_session_item_id' => $item->id,
-            'submitted_by' => $user->id,
-            'submission_type' => $item->item_type,
-            'answer_text' => $data['answer_text'] ?? null,
-            'submitted_at' => now(),
-            'review_status' => CourseItemSubmission::STATUS_PENDING_REVIEW,
-            'reviewed_by' => null,
-            'reviewed_at' => null,
-            'review_notes' => null,
-        ];
-
-        if ($request->hasFile('submission_file')) {
-            $file = $request->file('submission_file');
-            $safeName = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $file->getClientOriginalName()) ?: 'submission';
-            $path = $file->storeAs(
-                'task-submissions/'.$enrollment->id.'/'.$item->id,
-                uniqid('submission_', true).'-'.$safeName
-            );
-
-            $submissionPayload['file_path'] = $path;
-            $submissionPayload['file_name'] = $file->getClientOriginalName();
-            $submissionPayload['file_mime'] = $file->getClientMimeType();
-            $submissionPayload['file_size'] = $file->getSize();
-        }
-
-        $submission = CourseItemSubmission::create($submissionPayload);
-        CourseProgress::updateOrCreate(
-            [
-                'course_enrollment_id' => $enrollment->id,
-                'course_session_item_id' => $item->id,
-            ],
-            [
-                'completed_at' => now(),
-            ]
-        );
-
-        if ($enrollment->trainer && $this->notificationsTableAvailable()) {
-            $enrollment->trainer->notify(new SubmissionReceivedNotification($submission));
-        }
-
-        return back()->with('success', 'Submission uploaded successfully.');
+        return $this->storeQuizSubmission($request, $item, $enrollment, $user->id);
     }
 
     public function download(Request $request, CourseItemSubmission $submission)
@@ -285,7 +233,7 @@ class CourseItemSubmissionController extends Controller
             ->where('trainer_id', $user->id)
             ->get();
 
-        $latestSubmissions = CourseItemSubmission::with(['submitter', 'reviewer'])
+        $latestSubmissions = CourseItemSubmission::with(['quizAnswers.question', 'submitter', 'reviewer'])
             ->whereIn('course_enrollment_id', $assignedEnrollments->pluck('id'))
             ->where('course_session_item_id', $item->id)
             ->latest('submitted_at')
@@ -314,6 +262,9 @@ class CourseItemSubmissionController extends Controller
 
         abort_unless($this->canReviewSubmission($user, $submission), 403);
 
+        $submission->loadMissing('item');
+        $isQuizSubmission = $submission->submission_type === CourseSessionItem::TYPE_QUIZ;
+
         $data = $request->validate([
             'review_status' => ['required', Rule::in(CourseItemSubmission::REVIEW_STATUSES)],
             'review_notes' => [
@@ -324,6 +275,7 @@ class CourseItemSubmissionController extends Controller
                 'string',
                 'max:4000',
             ],
+            'score_earned' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $hasNewerSubmission = CourseItemSubmission::query()
@@ -339,6 +291,25 @@ class CourseItemSubmissionController extends Controller
         }
 
         $reviewStatus = (string) $data['review_status'];
+        $scoreEarned = null;
+        $scorePercent = null;
+        $passed = null;
+
+        if ($isQuizSubmission) {
+            $scoreTotal = max(0, (int) ($submission->score_total ?? 0));
+            $scoreEarned = $request->filled('score_earned')
+                ? (int) $request->input('score_earned')
+                : (int) ($submission->score_earned ?? 0);
+
+            if ($scoreTotal > 0 && $scoreEarned > $scoreTotal) {
+                throw ValidationException::withMessages([
+                    'score_earned' => 'Score cannot be higher than the total quiz points.',
+                ]);
+            }
+
+            $scorePercent = $this->scorePercent($scoreEarned, $scoreTotal);
+            $passed = $this->resolveQuizPassed($submission, $reviewStatus, $scorePercent);
+        }
 
         $submission->update([
             'review_status' => $reviewStatus,
@@ -347,6 +318,9 @@ class CourseItemSubmissionController extends Controller
                 : ($data['review_notes'] ?: null),
             'reviewed_by' => $reviewStatus === CourseItemSubmission::STATUS_PENDING_REVIEW ? null : $user->id,
             'reviewed_at' => $reviewStatus === CourseItemSubmission::STATUS_PENDING_REVIEW ? null : now(),
+            'score_earned' => $isQuizSubmission ? $scoreEarned : $submission->score_earned,
+            'score_percent' => $isQuizSubmission ? $scorePercent : $submission->score_percent,
+            'passed' => $isQuizSubmission ? $passed : $submission->passed,
         ]);
 
         $progress = CourseProgress::firstOrCreate(
@@ -360,12 +334,15 @@ class CourseItemSubmissionController extends Controller
         );
 
         $progress->completed_at = $reviewStatus === CourseItemSubmission::STATUS_REVISION_REQUESTED
+            || ($isQuizSubmission && $passed !== true)
             ? null
             : ($progress->completed_at ?? $submission->submitted_at ?? now());
         $progress->save();
 
         $message = match ($reviewStatus) {
-            CourseItemSubmission::STATUS_REVIEWED => 'Submission marked as reviewed.',
+            CourseItemSubmission::STATUS_REVIEWED => $isQuizSubmission && $scorePercent !== null
+                ? 'Quiz reviewed at '.$scorePercent.'%.'
+                : 'Submission marked as reviewed.',
             CourseItemSubmission::STATUS_REVISION_REQUESTED => 'Revision requested successfully.',
             default => 'Submission moved back to pending review.',
         };
@@ -388,6 +365,12 @@ class CourseItemSubmissionController extends Controller
                 ->where('trainer_id', $user->id)
                 ->exists();
             abort_unless($isAssigned, 403);
+        }
+
+        if (! $item->is_live && $item->quizQuestions()->doesntExist()) {
+            return back()->withErrors([
+                'quiz' => 'Add at least one quiz question before going live.',
+            ]);
         }
 
         $item->is_live = ! $item->is_live;
@@ -435,6 +418,259 @@ class CourseItemSubmissionController extends Controller
 
         return $user->role === User::ROLE_TRAINER
             && (int) $submission->enrollment?->trainer_id === (int) $user->id;
+    }
+
+    private function storeTaskSubmission(
+        Request $request,
+        CourseSessionItem $item,
+        CourseEnrollment $enrollment,
+        int $userId
+    ): RedirectResponse {
+        $data = $request->validate([
+            'submission_file' => ['required', 'file', 'max:307200'],
+        ]);
+
+        $file = $request->file('submission_file');
+        $safeName = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $file->getClientOriginalName()) ?: 'submission';
+        $path = $file->storeAs(
+            'task-submissions/'.$enrollment->id.'/'.$item->id,
+            uniqid('submission_', true).'-'.$safeName
+        );
+
+        $submission = CourseItemSubmission::create([
+            'course_enrollment_id' => $enrollment->id,
+            'course_session_item_id' => $item->id,
+            'submitted_by' => $userId,
+            'submission_type' => $item->item_type,
+            'submitted_at' => now(),
+            'review_status' => CourseItemSubmission::STATUS_PENDING_REVIEW,
+            'reviewed_by' => null,
+            'reviewed_at' => null,
+            'review_notes' => null,
+            'attempt_number' => 1,
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_mime' => $file->getClientMimeType(),
+            'file_size' => $file->getSize(),
+        ]);
+
+        CourseProgress::updateOrCreate(
+            [
+                'course_enrollment_id' => $enrollment->id,
+                'course_session_item_id' => $item->id,
+            ],
+            [
+                'completed_at' => now(),
+            ]
+        );
+
+        if ($enrollment->trainer && $this->notificationsTableAvailable()) {
+            $enrollment->trainer->notify(new SubmissionReceivedNotification($submission));
+        }
+
+        return back()->with('success', 'Submission uploaded successfully.');
+    }
+
+    private function storeQuizSubmission(
+        Request $request,
+        CourseSessionItem $item,
+        CourseEnrollment $enrollment,
+        int $userId
+    ): RedirectResponse {
+        $questions = $item->quizQuestions()->get();
+
+        if ($questions->isEmpty()) {
+            throw ValidationException::withMessages([
+                'quiz' => 'This quiz does not have any questions yet. Contact your trainer or admin.',
+            ]);
+        }
+
+        $attemptCount = CourseItemSubmission::query()
+            ->where('course_enrollment_id', $enrollment->id)
+            ->where('course_session_item_id', $item->id)
+            ->where('submission_type', CourseSessionItem::TYPE_QUIZ)
+            ->count();
+
+        if ($attemptCount >= $item->quizMaxAttempts()) {
+            throw ValidationException::withMessages([
+                'quiz' => 'You have reached the maximum number of attempts for this quiz.',
+            ]);
+        }
+
+        $data = $request->validate($this->buildQuizValidationRules($questions->all()));
+        $submittedAnswers = $data['quiz_answers'] ?? [];
+        $submittedAt = now();
+        $attemptNumber = $attemptCount + 1;
+        $scoreTotal = (int) $questions->sum('points');
+        $scoreEarned = 0;
+        $answerRows = [];
+
+        foreach ($questions as $question) {
+            $submittedAnswer = trim((string) ($submittedAnswers[$question->id] ?? ''));
+            $isCorrect = $question->answerIsCorrect($submittedAnswer);
+            $earnedPoints = $isCorrect ? (int) $question->points : 0;
+            $scoreEarned += $earnedPoints;
+
+            $answerRows[] = [
+                'course_quiz_question_id' => $question->id,
+                'answer_text' => $submittedAnswer,
+                'is_correct' => $isCorrect,
+                'earned_points' => $earnedPoints,
+                'max_points' => (int) $question->points,
+            ];
+        }
+
+        $scorePercent = $this->scorePercent($scoreEarned, $scoreTotal);
+        $passed = $scorePercent !== null && $scorePercent >= $item->quizPassPercentage();
+        $reviewStatus = $passed
+            ? CourseItemSubmission::STATUS_REVIEWED
+            : CourseItemSubmission::STATUS_REVISION_REQUESTED;
+        $attemptsRemaining = max(0, $item->quizMaxAttempts() - $attemptNumber);
+        $reviewNotes = $passed
+            ? 'Auto-graded quiz. You passed this attempt.'
+            : 'Auto-graded quiz. Score is below the pass mark, so another attempt is needed.';
+
+        $submission = DB::transaction(function () use (
+            $answerRows,
+            $attemptNumber,
+            $enrollment,
+            $item,
+            $passed,
+            $reviewNotes,
+            $reviewStatus,
+            $scoreEarned,
+            $scorePercent,
+            $scoreTotal,
+            $submittedAt,
+            $userId
+        ) {
+            $submission = CourseItemSubmission::create([
+                'course_enrollment_id' => $enrollment->id,
+                'course_session_item_id' => $item->id,
+                'submitted_by' => $userId,
+                'submission_type' => CourseSessionItem::TYPE_QUIZ,
+                'answer_text' => 'Structured quiz attempt submitted.',
+                'submitted_at' => $submittedAt,
+                'review_status' => $reviewStatus,
+                'reviewed_by' => null,
+                'reviewed_at' => $submittedAt,
+                'review_notes' => $reviewNotes,
+                'score_earned' => $scoreEarned,
+                'score_total' => $scoreTotal,
+                'score_percent' => $scorePercent,
+                'passed' => $passed,
+                'attempt_number' => $attemptNumber,
+            ]);
+
+            foreach ($answerRows as $answerRow) {
+                $submission->quizAnswers()->create($answerRow);
+            }
+
+            CourseProgress::updateOrCreate(
+                [
+                    'course_enrollment_id' => $enrollment->id,
+                    'course_session_item_id' => $item->id,
+                ],
+                [
+                    'completed_at' => $passed ? $submittedAt : null,
+                ]
+            );
+
+            return $submission;
+        });
+
+        if ($enrollment->trainer && $this->notificationsTableAvailable()) {
+            $enrollment->trainer->notify(new SubmissionReceivedNotification($submission));
+        }
+
+        return back()->with(
+            'success',
+            $this->buildQuizAttemptMessage($scoreEarned, $scoreTotal, $scorePercent, $passed, $attemptsRemaining)
+        );
+    }
+
+    /**
+     * @param  array<int, \App\Models\CourseQuizQuestion>  $questions
+     * @return array<string, array<int, mixed>>
+     */
+    private function buildQuizValidationRules(array $questions): array
+    {
+        $rules = [
+            'quiz_answers' => ['required', 'array'],
+        ];
+
+        foreach ($questions as $question) {
+            $field = 'quiz_answers.'.$question->id;
+
+            $rules[$field] = match ($question->question_type) {
+                \App\Models\CourseQuizQuestion::TYPE_SINGLE_CHOICE => [
+                    'required',
+                    Rule::in(array_map('strval', range(1, count($question->optionList())))),
+                ],
+                \App\Models\CourseQuizQuestion::TYPE_TRUE_FALSE => [
+                    'required',
+                    Rule::in(['true', 'false']),
+                ],
+                default => ['required', 'string', 'max:4000'],
+            };
+        }
+
+        return $rules;
+    }
+
+    private function buildQuizAttemptMessage(
+        int $scoreEarned,
+        int $scoreTotal,
+        ?int $scorePercent,
+        bool $passed,
+        int $attemptsRemaining
+    ): string {
+        $base = 'Quiz attempt recorded. Score '.$scoreEarned.' / '.$scoreTotal;
+
+        if ($scorePercent !== null) {
+            $base .= ' ('.$scorePercent.'%).';
+        } else {
+            $base .= '.';
+        }
+
+        if ($passed) {
+            return $base.' You passed the quiz.';
+        }
+
+        return $attemptsRemaining > 0
+            ? $base.' You can try again. Attempts left: '.$attemptsRemaining.'.'
+            : $base.' You have no attempts left right now.';
+    }
+
+    private function resolveQuizPassed(
+        CourseItemSubmission $submission,
+        string $reviewStatus,
+        ?int $scorePercent
+    ): ?bool {
+        if ($reviewStatus === CourseItemSubmission::STATUS_PENDING_REVIEW) {
+            return null;
+        }
+
+        if ($reviewStatus === CourseItemSubmission::STATUS_REVISION_REQUESTED) {
+            return false;
+        }
+
+        if ($scorePercent === null) {
+            return true;
+        }
+
+        $passPercentage = $submission->item?->quizPassPercentage() ?? 70;
+
+        return $scorePercent >= $passPercentage;
+    }
+
+    private function scorePercent(int $scoreEarned, int $scoreTotal): ?int
+    {
+        if ($scoreTotal < 1) {
+            return null;
+        }
+
+        return (int) round(($scoreEarned / $scoreTotal) * 100);
     }
 
     private function downloadFile(CourseItemSubmission $submission)

@@ -55,7 +55,7 @@ class CourseController extends Controller
             return $assignmentBlock;
         }
 
-        $course->load(['category', 'subcategory', 'weeks.sessions.items']);
+        $course->load(['category', 'subcategory', 'weeks.sessions.items.quizQuestions']);
 
         $enrollments = CourseEnrollment::query()
             ->with(['student', 'trainer'])
