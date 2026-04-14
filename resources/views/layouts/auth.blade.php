@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>{{ $title ?? 'Academic Mantra Login' }}</title>
     <link rel="icon" type="image/webp" href="/images/logo.webp">
     <link rel="shortcut icon" type="image/webp" href="/images/logo.webp">

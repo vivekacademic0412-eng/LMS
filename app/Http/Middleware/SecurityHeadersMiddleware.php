@@ -18,6 +18,7 @@ class SecurityHeadersMiddleware
         $isEmbeddedMediaView = $isMediaView && $request->boolean('embed');
         $allowsSameOriginFrame = $isMediaStream || $isEmbeddedMediaView;
         $allowsYoutubeEmbeds = $request->routeIs('dashboard', 'demo-review-videos.*');
+        $isAuthScreen = $request->routeIs('login', 'login.attempt');
         $response->headers->set('X-Frame-Options', $allowsSameOriginFrame ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -65,7 +66,7 @@ class SecurityHeadersMiddleware
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
-        if ($request->user()) {
+        if ($request->user() || $isAuthScreen) {
             $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             $response->headers->set('Pragma', 'no-cache');
             $response->headers->set('Expires', '0');
