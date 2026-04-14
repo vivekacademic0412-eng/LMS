@@ -80,22 +80,55 @@
                                             </div>
                                             @if ($assignment)
                                                 <div class="demo-submit-block demo-rating-block demo-task-rating-panel">
-                                                    <h4>Rate Task Video</h4>
-                                                    <div class="demo-rating-input" role="radiogroup" aria-label="Rate this task video from 1 to 5 stars">
-                                                        @for ($star = 5; $star >= 1; $star--)
+                                                    <h4>Don't spare us. The children learning from this programme won't thank you for it</h4>
+                                                    <div class="demo-rating-input" role="radiogroup" aria-label="Rate this task video from 1 to 5 smileys">
+                                                        @for ($rating = 1; $rating <= 5; $rating++)
+                                                            @php
+                                                                $ratingLabel = match ($rating) {
+                                                                    1 => 'Painful',
+                                                                    2 => 'Rough',
+                                                                    3 => 'Okay',
+                                                                    4 => 'Good',
+                                                                    default => 'Excellent',
+                                                                };
+                                                            @endphp
                                                             <input
-                                                                id="video_rating_{{ $assignment->id }}_{{ $star }}"
+                                                                id="video_rating_{{ $assignment->id }}_{{ $rating }}"
                                                                 type="radio"
                                                                 name="video_rating"
-                                                                value="{{ $star }}"
+                                                                value="{{ $rating }}"
                                                                 form="demo-submit-form-{{ $assignment->id }}"
-                                                                @checked((int) old('video_rating') === $star)
+                                                                aria-label="Rating {{ $rating }} of 5"
+                                                                @checked((int) old('video_rating') === $rating)
                                                                 required
                                                             >
-                                                            <label for="video_rating_{{ $assignment->id }}_{{ $star }}" title="{{ $star }} star{{ $star === 1 ? '' : 's' }}">&#9733;</label>
+                                                            <label
+                                                                for="video_rating_{{ $assignment->id }}_{{ $rating }}"
+                                                                class="demo-rating-smiley demo-rating-smiley--{{ $rating }}"
+                                                                title="Rating {{ $rating }} of 5"
+                                                            >
+                                                                <svg viewBox="0 0 40 40" aria-hidden="true">
+                                                                    <circle class="face-fill" cx="20" cy="20" r="16"></circle>
+                                                                    <circle cx="20" cy="20" r="16"></circle>
+                                                                    <circle class="face-eye" cx="14.5" cy="15" r="1.8"></circle>
+                                                                    <circle class="face-eye" cx="25.5" cy="15" r="1.8"></circle>
+                                                                    @if ($rating === 5)
+                                                                        <path d="M12.5 21.5c2.5 4.3 12.5 4.3 15 0"></path>
+                                                                    @elseif ($rating === 4)
+                                                                        <path d="M13.5 22.5c2 2.6 11 2.6 13 0"></path>
+                                                                    @elseif ($rating === 3)
+                                                                        <path d="M14 24h12"></path>
+                                                                    @elseif ($rating === 2)
+                                                                        <path d="M13.5 25.5c2-2.6 11-2.6 13 0"></path>
+                                                                    @else
+                                                                        <path d="M12.5 27c2.5-4.3 12.5-4.3 15 0"></path>
+                                                                    @endif
+                                                                </svg>
+                                                                <span class="demo-rating-text">{{ $ratingLabel }}</span>
+                                                            </label>
                                                         @endfor
                                                     </div>
-                                                    <div class="demo-rating-hint">1 is lowest and 5 is highest.</div>
+                                                    <div class="demo-rating-hint">You're not just a student here. You're a co-designer. Tell us what to fix</div>
                                                 </div>
                                             @endif
                                         </div>

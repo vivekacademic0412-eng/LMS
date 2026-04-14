@@ -2537,13 +2537,15 @@
             box-shadow: 0 10px 22px rgba(18, 42, 86, 0.06);
         }
         .demo-task-rating-panel h4 {
-            margin-bottom: 2px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            line-height: 1.55;
         }
         .demo-rating-input {
-            display: inline-flex;
-            flex-direction: row-reverse;
-            justify-content: flex-end;
-            gap: 4px;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+            align-items: stretch;
         }
         .demo-rating-input input[type="radio"] {
             position: absolute;
@@ -2553,27 +2555,132 @@
             pointer-events: none;
         }
         .demo-rating-input label {
-            font-size: 30px;
-            line-height: 1;
-            color: #c5d2e8;
+            position: relative;
+            min-height: 66px;
+            padding: 8px 6px 7px;
+            border: 1px solid #d6e0f0;
+            border-radius: 15px;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0) 44%),
+                linear-gradient(180deg, #ffffff, #f7faff);
+            color: #73839f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             cursor: pointer;
-            transition: color 180ms ease, transform 180ms ease, text-shadow 180ms ease;
+            overflow: hidden;
+            transition: color 180ms ease, transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+        .demo-rating-input label::before {
+            content: '';
+            position: absolute;
+            inset: auto 12px 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: currentColor;
+            opacity: 0.08;
+            filter: blur(10px);
+            transition: opacity 180ms ease;
+        }
+        .demo-rating-input label svg {
+            width: 28px;
+            height: 28px;
+            stroke: currentColor;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            position: relative;
+            z-index: 1;
+        }
+        .demo-rating-input label .face-fill,
+        .demo-rating-input label .face-eye {
+            stroke: none;
+            fill: currentColor;
+        }
+        .demo-rating-input label .face-fill {
+            opacity: 0.12;
+        }
+        .demo-rating-text {
+            position: relative;
+            z-index: 1;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            line-height: 1.2;
+            text-transform: uppercase;
+            text-align: center;
         }
         .demo-rating-input label:hover,
-        .demo-rating-input label:hover ~ label,
-        .demo-rating-input input[type="radio"]:checked ~ label {
-            color: #f4b400;
-            transform: translateY(-1px);
-            text-shadow: 0 8px 14px rgba(244, 180, 0, 0.28);
+        .demo-rating-input input[type="radio"]:checked + label {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 16px 24px rgba(18, 42, 86, 0.14);
+        }
+        .demo-rating-input label:hover::before,
+        .demo-rating-input input[type="radio"]:checked + label::before {
+            opacity: 0.18;
+        }
+        .demo-rating-input label.demo-rating-smiley--1:hover,
+        .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--1 {
+            border-color: #efb1b1;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%),
+                linear-gradient(180deg, #fff7f7, #ffecec);
+            color: #c45353;
+        }
+        .demo-rating-input label.demo-rating-smiley--2:hover,
+        .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--2 {
+            border-color: #efc4a0;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%),
+                linear-gradient(180deg, #fff9f2, #ffefdf);
+            color: #cf7b2d;
+        }
+        .demo-rating-input label.demo-rating-smiley--3:hover,
+        .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--3 {
+            border-color: #e6d5a5;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%),
+                linear-gradient(180deg, #fffdf5, #fff6dc);
+            color: #b18918;
+        }
+        .demo-rating-input label.demo-rating-smiley--4:hover,
+        .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--4 {
+            border-color: #b7d8d2;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%),
+                linear-gradient(180deg, #f5fffc, #e6faf4);
+            color: #228571;
+        }
+        .demo-rating-input label.demo-rating-smiley--5:hover,
+        .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--5 {
+            border-color: #b9d9b5;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%),
+                linear-gradient(180deg, #f7fff5, #e8f8e3);
+            color: #3d8c39;
         }
         .demo-rating-input input[type="radio"]:focus-visible + label {
             outline: 2px solid #7ea9ea;
             outline-offset: 3px;
-            border-radius: 4px;
+            border-radius: 15px;
         }
         .demo-rating-hint {
             color: #5f7190;
             font-size: 12px;
+            line-height: 1.6;
+        }
+        @media (max-width: 620px) {
+            .demo-rating-input {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 420px) {
+            .demo-rating-input {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
         .demo-submit-field input,
         .demo-submit-block textarea,
@@ -3665,6 +3772,53 @@
         }
         html[data-theme="dark"] .demo-task-rating-panel {
             box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
+        }
+        html[data-theme="dark"] .demo-rating-input label {
+            border-color: var(--line) !important;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(160, 198, 255, 0.08), rgba(160, 198, 255, 0) 42%),
+                color-mix(in srgb, var(--field-bg) 88%, #101a2d 12%) !important;
+            color: var(--muted) !important;
+        }
+        html[data-theme="dark"] .demo-rating-input label.demo-rating-smiley--1:hover,
+        html[data-theme="dark"] .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--1 {
+            border-color: rgba(231, 122, 122, 0.42) !important;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(255, 181, 181, 0.12), rgba(255, 181, 181, 0) 42%),
+                linear-gradient(180deg, rgba(95, 29, 40, 0.78), rgba(72, 20, 29, 0.82)) !important;
+            color: #ff9d9d !important;
+        }
+        html[data-theme="dark"] .demo-rating-input label.demo-rating-smiley--2:hover,
+        html[data-theme="dark"] .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--2 {
+            border-color: rgba(230, 161, 81, 0.42) !important;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(255, 206, 143, 0.12), rgba(255, 206, 143, 0) 42%),
+                linear-gradient(180deg, rgba(95, 58, 21, 0.8), rgba(70, 42, 15, 0.84)) !important;
+            color: #ffbf73 !important;
+        }
+        html[data-theme="dark"] .demo-rating-input label.demo-rating-smiley--3:hover,
+        html[data-theme="dark"] .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--3 {
+            border-color: rgba(214, 188, 94, 0.42) !important;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(245, 220, 122, 0.12), rgba(245, 220, 122, 0) 42%),
+                linear-gradient(180deg, rgba(88, 72, 20, 0.8), rgba(64, 51, 12, 0.84)) !important;
+            color: #f4d36f !important;
+        }
+        html[data-theme="dark"] .demo-rating-input label.demo-rating-smiley--4:hover,
+        html[data-theme="dark"] .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--4 {
+            border-color: rgba(85, 192, 167, 0.42) !important;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(124, 226, 202, 0.12), rgba(124, 226, 202, 0) 42%),
+                linear-gradient(180deg, rgba(17, 78, 70, 0.8), rgba(11, 59, 54, 0.84)) !important;
+            color: #75dbc1 !important;
+        }
+        html[data-theme="dark"] .demo-rating-input label.demo-rating-smiley--5:hover,
+        html[data-theme="dark"] .demo-rating-input input[type="radio"]:checked + label.demo-rating-smiley--5 {
+            border-color: rgba(108, 199, 97, 0.42) !important;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(152, 235, 142, 0.12), rgba(152, 235, 142, 0) 42%),
+                linear-gradient(180deg, rgba(26, 86, 34, 0.8), rgba(16, 63, 22, 0.84)) !important;
+            color: #8ee584 !important;
         }
         html[data-theme="dark"] .demo-video-dot {
             background: color-mix(in srgb, var(--line) 78%, #8fb3e6 22%);
