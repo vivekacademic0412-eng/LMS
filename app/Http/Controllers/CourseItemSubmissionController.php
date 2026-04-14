@@ -28,11 +28,13 @@ class CourseItemSubmissionController extends Controller
         $requestedCourseId = (string) $request->query('course_id');
         $requestedTrainerId = (string) $request->query('trainer_id');
         $requestedStatus = (string) $request->query('status');
+        $activeSearch = trim((string) $request->query('search'));
         $statusOptions = CourseItemSubmission::reviewStatusOptions();
 
         $courseId = $requestedCourseId !== '' ? (int) $requestedCourseId : null;
         $trainerId = $requestedTrainerId !== '' ? (int) $requestedTrainerId : null;
         $statusFilter = array_key_exists($requestedStatus, $statusOptions) ? $requestedStatus : null;
+        $searchLike = '%'.$activeSearch.'%';
 
         $latestSubmissionIds = CourseItemSubmission::query()
             ->when($courseId, fn ($q) => $q->whereHas('enrollment', fn ($eq) => $eq->where('course_id', $courseId)))
@@ -57,6 +59,30 @@ class CourseItemSubmissionController extends Controller
                 fn ($q) => $q->whereIn('id', $latestSubmissionIds),
                 fn ($q) => $q->whereRaw('1 = 0')
             )
+            ->when($activeSearch !== '', function ($query) use ($activeSearch, $searchLike) {
+                $query->where(function ($searchQuery) use ($activeSearch, $searchLike) {
+                    if (ctype_digit($activeSearch)) {
+                        $searchQuery->orWhere('course_item_submissions.id', (int) $activeSearch);
+                    }
+
+                    $searchQuery
+                        ->orWhere('answer_text', 'like', $searchLike)
+                        ->orWhere('file_name', 'like', $searchLike)
+                        ->orWhere('review_notes', 'like', $searchLike)
+                        ->orWhereHas('enrollment.course', fn ($courseQuery) => $courseQuery->where('title', 'like', $searchLike))
+                        ->orWhereHas('enrollment.student', function ($studentQuery) use ($searchLike) {
+                            $studentQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        })
+                        ->orWhereHas('enrollment.trainer', function ($trainerQuery) use ($searchLike) {
+                            $trainerQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        })
+                        ->orWhereHas('item', fn ($itemQuery) => $itemQuery->where('title', 'like', $searchLike));
+                });
+            })
             ->orderByDesc('submitted_at')
             ->orderByDesc('id')
             ->paginate(8)
@@ -70,6 +96,7 @@ class CourseItemSubmissionController extends Controller
             'activeCourseId' => $courseId,
             'activeTrainerId' => $trainerId,
             'activeStatus' => $statusFilter,
+            'activeSearch' => $activeSearch,
         ]);
     }
 

@@ -251,6 +251,7 @@
                             <span class="meta-chip">Subcategory: {{ $course->subcategory->name }}</span>
                         @endif
                         <span class="meta-chip">Duration: {{ $course->duration_hours }}h</span>
+                        <span class="meta-chip">Estimated from items: {{ $course->estimatedDurationLabel() }}</span>
                         <span class="meta-chip">Language: {{ $course->language ?: 'N/A' }}</span>
                     </div>
                     <p class="course-desc">{{ $course->short_description ?: ($course->description ?: '-') }}</p>
@@ -309,6 +310,7 @@
                                     <th>Title</th>
                                     <th>Resource Type</th>
                                     <th>Content/Task/Quiz</th>
+                                    <th>Estimate</th>
                                     <th>URL</th>
                                     @if ($canManage)<th>Update</th>@endif
                                 </tr>
@@ -333,6 +335,7 @@
                                             {{ $item->content ?: '-' }}
                                         @endif
                                     </td>
+                                    <td>{{ $item->estimatedMinutes() ? $item->estimatedMinutes().' min' : '-' }}</td>
                                     <td>
                                         @if ($item->hasPrivateCloudinaryAsset())
                                             <a href="{{ route('course-session-items.media.view', $item) }}" class="secure-link">Open Secure Viewer</a>
@@ -561,6 +564,17 @@
                                     </div>
                                     <textarea name="content" rows="2" placeholder="Content / instructions for this session item">{{ $item->content }}</textarea>
                                     <input type="url" name="resource_url" value="{{ $item->resource_url }}" placeholder="External URL (optional)">
+                                    <div class="field">
+                                        <label>Estimated Minutes</label>
+                                        <input type="number" min="1" max="600" name="estimated_minutes" value="{{ old('estimated_minutes', $item->estimated_minutes) }}" placeholder="Optional">
+                                        <div class="muted mt-6">
+                                            @if ($item->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ)
+                                                Leave this empty to use the quiz time limit from the quiz editor.
+                                            @else
+                                                This estimate contributes to the course duration shown on student course cards.
+                                            @endif
+                                        </div>
+                                    </div>
                                     <div class="field">
                                         <label>Secure File ({{ $item->item_type === 'task' ? 'Any File' : 'Video/PDF/PPT/Office' }})</label>
                                         <input

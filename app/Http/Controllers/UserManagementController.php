@@ -20,10 +20,12 @@ class UserManagementController extends Controller
 
         $actor = $request->user();
         $visibleRoleOptions = $this->visibleRoleOptionsForActor($actor);
+        $activeSearch = trim((string) $request->query('search'));
         $requestedRole = (string) $request->query('role');
         $roleFilter = array_key_exists($requestedRole, $visibleRoleOptions) ? $requestedRole : null;
         $requestedStatus = (string) $request->query('status');
         $statusFilter = in_array($requestedStatus, ['active', 'inactive'], true) ? $requestedStatus : null;
+        $searchLike = '%'.$activeSearch.'%';
 
         $usersQuery = User::query()
             ->when(
@@ -33,6 +35,18 @@ class UserManagementController extends Controller
             ->when($statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->when($roleFilter, fn ($q) => $q->where('role', $roleFilter))
+            ->when($activeSearch !== '', function ($query) use ($activeSearch, $searchLike) {
+                $query->where(function ($searchQuery) use ($activeSearch, $searchLike) {
+                    if (ctype_digit($activeSearch)) {
+                        $searchQuery->orWhere('id', (int) $activeSearch);
+                    }
+
+                    $searchQuery
+                        ->orWhere('name', 'like', $searchLike)
+                        ->orWhere('email', 'like', $searchLike)
+                        ->orWhere('role', 'like', $searchLike);
+                });
+            })
             ->orderBy('id');
 
         return view('users.index', [
@@ -42,6 +56,7 @@ class UserManagementController extends Controller
             'isSuperAdmin' => $actor?->role === User::ROLE_SUPERADMIN,
             'activeRole' => $roleFilter,
             'activeStatus' => $statusFilter,
+            'activeSearch' => $activeSearch,
         ]);
     }
 

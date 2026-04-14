@@ -152,6 +152,7 @@ class CourseWeekController extends Controller
             'resource_type' => ['nullable', 'string', Rule::in(['video', 'ppt', 'video_or_ppt'])],
             'content' => ['nullable', 'string', 'max:2000'],
             'resource_url' => ['nullable', 'url', 'max:500'],
+            'estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
         ];
 
         $defaultMimes = 'mp4,mov,avi,mkv,pdf,ppt,pptx,doc,docx,xls,xlsx';
@@ -181,6 +182,9 @@ class CourseWeekController extends Controller
             'resource_type' => $data['resource_type'] ?? null,
             'content' => $data['content'] ?? null,
             'resource_url' => $data['resource_url'] ?? null,
+            'estimated_minutes' => filled($data['estimated_minutes'] ?? null)
+                ? (int) $data['estimated_minutes']
+                : null,
         ];
 
         if ($request->hasFile('resource_file')) {

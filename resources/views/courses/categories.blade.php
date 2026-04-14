@@ -14,6 +14,13 @@
             align-items: center;
             gap: 14px;
         }
+        .category-head-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+        }
         .category-head h1 {
             font-size: 30px;
             line-height: 1.05;
@@ -298,6 +305,10 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+            .category-head-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
             .category-head h1 { font-size: 24px; }
             .category-grid { grid-template-columns: 1fr; }
             .form-grid, .form-grid-2 { grid-template-columns: 1fr; }
@@ -312,7 +323,10 @@
                     <p class="muted">Manage main categories and subcategories from one place.</p>
                 </div>
                 @if ($canManage)
-                    <button type="button" class="btn category-create-btn" data-modal-open="modal-main-create">+ Add new category</button>
+                    <div class="category-head-actions">
+                        <button type="button" class="btn category-create-btn" data-modal-open="modal-main-create">+ Add new category</button>
+                        <a class="btn btn-soft" href="{{ route('courses.index', ['open_modal' => 'modal-course-create']) }}">+ Add Course</a>
+                    </div>
                 @endif
             </div>
         </section>
@@ -372,6 +386,19 @@
 
                         @if ($canManage)
                            <div class="card-tools">
+
+    <!-- Add Course -->
+    <a
+        class="btn-mini"
+        href="{{ route('courses.index', ['open_modal' => 'modal-course-create', 'create_category' => $category->id]) }}">
+        <svg width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+        </svg>
+        Add Course
+    </a>
 
     <!-- Add Subcategory -->
     <button type="button"

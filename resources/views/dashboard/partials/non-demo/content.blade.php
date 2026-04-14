@@ -227,7 +227,7 @@
                                                     <h4>{{ $course['title'] }}</h4>
                                                     <p class="recommend-meta">By {{ $course['provider'] }}</p>
                                                     <div class="recommend-foot">
-                                                        <span>{{ $course['hours'] }}h total</span>
+                                                        <span>Estimated {{ $course['estimated_duration'] }}</span>
                                                         <a class="mini-btn" href="{{ route('courses.show', $course['id']) }}">View Course</a>
                                                     </div>
                                                 </div>
@@ -496,7 +496,7 @@
                                     <h4>{{ $course['title'] }}</h4>
                                     <p class="recommend-meta">By {{ $course['provider'] }}</p>
                                     <div class="recommend-foot">
-                                        <span>{{ $course['hours'] }}h total</span>
+                                        <span>Estimated {{ $course['estimated_duration'] }}</span>
                                         <a class="mini-btn" href="{{ route('courses.show', $course['id']) }}">View Course</a>
                                     </div>
                                 </div>

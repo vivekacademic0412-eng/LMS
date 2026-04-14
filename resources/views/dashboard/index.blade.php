@@ -2154,6 +2154,26 @@
             font-size: 14px;
             letter-spacing: 0.03em;
         }
+        .upload-empty {
+            border: 1px dashed var(--line);
+            border-radius: 14px;
+            padding: 18px;
+            min-height: 220px;
+            display: grid;
+            align-content: center;
+            gap: 8px;
+            color: var(--muted);
+            line-height: 1.7;
+            background:
+                linear-gradient(180deg, rgba(15, 77, 191, 0.03), rgba(15, 77, 191, 0)),
+                var(--card);
+        }
+        .demo-empty--media {
+            height: 100%;
+            display: grid;
+            place-content: center;
+            text-align: center;
+        }
         .demo-review-slider .demo-video-cover {
             background:
                 radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 36%),
@@ -2334,6 +2354,13 @@
             display: flex;
             min-width: 0;
         }
+        .demo-task-media-stack {
+            display: grid;
+            gap: 12px;
+            width: 100%;
+            min-width: 0;
+            align-content: start;
+        }
         .demo-task-form-col {
             min-width: 0;
             display: flex;
@@ -2504,6 +2531,13 @@
         }
         .demo-rating-block {
             background: linear-gradient(180deg, rgba(15, 77, 191, 0.06), rgba(15, 77, 191, 0.02));
+        }
+        .demo-task-rating-panel {
+            padding: 12px 14px;
+            box-shadow: 0 10px 22px rgba(18, 42, 86, 0.06);
+        }
+        .demo-task-rating-panel h4 {
+            margin-bottom: 2px;
         }
         .demo-rating-input {
             display: inline-flex;
@@ -3309,6 +3343,354 @@
             50% {
                 box-shadow: inset 0 0 0 1px rgba(15, 77, 191, 0.08);
             }
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            [class$="-card"],
+            [class*="-card "],
+            [class$="-panel"],
+            [class*="-panel "],
+            [class$="-box"],
+            [class*="-box "],
+            [class$="-stat"],
+            [class*="-stat "],
+            [class$="-tile"],
+            [class*="-tile "]
+        ) {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--card) 98%, var(--primary-soft) 2%)) !important;
+            border-color: color-mix(in srgb, var(--line) 86%, #6e9be0 14%) !important;
+            color: var(--text);
+            box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .resume-copy h2,
+            .resume-stat strong,
+            .action-queue-head h3,
+            .queue-summary-box strong,
+            .stat-box strong,
+            .panel-box h3,
+            .recommend-card h3,
+            .course-body h3,
+            .demo-section-title h2
+        ) {
+            color: var(--text) !important;
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .resume-note,
+            .action-queue-head p,
+            .queue-summary-box span,
+            .resume-stat span,
+            .course-foot,
+            .course-meta,
+            .recommend-foot,
+            .demo-section-title p,
+            .muted
+        ) {
+            color: var(--muted) !important;
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .pill,
+            .focus-pill
+        ) {
+            background: color-mix(in srgb, var(--primary-soft) 82%, #152642 18%) !important;
+            border-color: color-mix(in srgb, var(--primary) 36%, var(--line) 64%) !important;
+            color: var(--primary) !important;
+        }
+        html[data-theme="dark"] .dash-grid .student-mode .dash-hero,
+        html[data-theme="dark"] .dash-grid .dash-hero {
+            box-shadow: 0 22px 42px rgba(0, 0, 0, 0.32);
+        }
+        html[data-theme="dark"] .dash-grid .demo-section-title > div::after {
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .resume-stat,
+            .queue-summary-box,
+            .queue-item,
+            .submission-empty,
+            .certificate-card,
+            .dashboard-section,
+            .student-progress-dashboard,
+            .student-progress-card,
+            .notification-card,
+            .quick-action-link,
+            .stat-box,
+            .admin-demo-user-stat,
+            .topic,
+            .recommend-card,
+            .panel-inline-kpi,
+            .activity-feed-card,
+            .submission-answer-box,
+            .submission-doc-box,
+            .demo-submit-panel,
+            .demo-submit-block,
+            .demo-task-reset-note,
+            .demo-submit-success-stat
+        ) {
+            border-color: color-mix(in srgb, var(--line) 84%, #6e9be0 16%) !important;
+            background: linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--card) 98%, var(--primary-soft) 2%)) !important;
+            color: var(--text);
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .resume-stat span,
+            .resume-note,
+            .action-queue-head p,
+            .queue-summary-box span,
+            .queue-item p,
+            .queue-meta,
+            .submission-empty,
+            .certificate-meta,
+            .certificate-code,
+            .dashboard-section .section-head p,
+            .notification-time,
+            .notification-card .muted,
+            .quick-actions-card p,
+            .section-head p,
+            .course-meta,
+            .course-foot,
+            .stat-box span,
+            .admin-demo-submission-meta,
+            .admin-demo-user-stat span,
+            .admin-demo-rating .score,
+            .skill-label,
+            .topic p,
+            .recommend-meta,
+            .recommend-foot,
+            .panel-inline-kpi p,
+            .activity-feed-topline,
+            .activity-feed-copy p,
+            .activity-feed-meta,
+            .submission-answer-box h4,
+            .submission-doc-box h4,
+            .submission-meta,
+            .demo-task-video-note,
+            .demo-task-meta,
+            .demo-submit-note,
+            .demo-submit-field label,
+            .demo-submit-block h4,
+            .demo-rating-hint,
+            .demo-task-reset-note,
+            .demo-submit-success-copy p,
+            .demo-submit-success-stat span
+        ) {
+            color: var(--muted) !important;
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .queue-item strong,
+            .certificate-card h4,
+            .notification-card strong,
+            .quick-action-link,
+            .stat-box b,
+            .admin-demo-submission-card strong,
+            .admin-demo-user-stat strong,
+            .admin-demo-answer,
+            .recommend-body h4,
+            .panel-inline-kpi b,
+            .activity-feed-copy strong,
+            .submission-head strong,
+            .submission-answer,
+            .submission-doc-box .doc-name,
+            .demo-submit-success-copy strong,
+            .demo-submit-success-stat strong
+        ) {
+            color: var(--text) !important;
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .notification-kicker,
+            .notification-tag,
+            .mini-cta,
+            .student-column-label,
+            .demo-submit-success-badge,
+            .demo-status
+        ) {
+            background: color-mix(in srgb, var(--primary-soft) 80%, #152642 20%) !important;
+            border-color: color-mix(in srgb, var(--primary) 34%, var(--line) 66%) !important;
+            color: #dfeaff !important;
+        }
+        html[data-theme="dark"] .dash-grid .notification-tag--soft {
+            background: color-mix(in srgb, var(--field-bg) 88%, #101a2d 12%) !important;
+            color: var(--muted) !important;
+        }
+        html[data-theme="dark"] .dash-grid .quick-action-link:hover,
+        html[data-theme="dark"] .dash-grid .demo-submit-panel:hover {
+            border-color: color-mix(in srgb, var(--primary) 36%, var(--line) 64%) !important;
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28);
+        }
+        html[data-theme="dark"] .dash-grid .queue-list::-webkit-scrollbar-thumb {
+            background: color-mix(in srgb, var(--line) 78%, #6e92c8 22%);
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .focus-pill--task,
+            .queue-tag--task,
+            .activity-feed-badge--revision
+        ) {
+            background: rgba(255, 191, 102, 0.16) !important;
+            border-color: rgba(255, 191, 102, 0.32) !important;
+            color: #ffc88a !important;
+        }
+        html[data-theme="dark"] .dash-grid :is(
+            .focus-pill--quiz,
+            .queue-tag--quiz,
+            .activity-feed-badge--pending,
+            .activity-feed-badge--certificate
+        ) {
+            background: rgba(120, 175, 255, 0.16) !important;
+            border-color: rgba(120, 175, 255, 0.3) !important;
+            color: #d4e4ff !important;
+        }
+        html[data-theme="dark"] .dash-grid .activity-feed-badge--completed {
+            background: rgba(74, 196, 136, 0.16) !important;
+            border-color: rgba(74, 196, 136, 0.3) !important;
+            color: #9de1be !important;
+        }
+        html[data-theme="dark"] :is(
+            .modal.modal-demo-submit,
+            .modal,
+            .demo-submit-panel,
+            .demo-submit-block,
+            .demo-task-rating-panel,
+            .demo-task-reset-note,
+            .demo-submit-success-stat
+        ) {
+            border-color: color-mix(in srgb, var(--line) 82%, #6e9be0 18%) !important;
+            background:
+                radial-gradient(circle at top right, rgba(120, 175, 255, 0.12), rgba(120, 175, 255, 0) 36%),
+                linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%)) !important;
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.42);
+        }
+        html[data-theme="dark"] :is(
+            .demo-submit-note,
+            .demo-submit-field label,
+            .demo-submit-block h4,
+            .demo-rating-hint,
+            .demo-task-reset-note,
+            .demo-submit-success-copy p,
+            .demo-submit-success-stat span
+        ) {
+            color: var(--muted) !important;
+        }
+        html[data-theme="dark"] :is(
+            .modal.modal-demo-submit .modal-head,
+            .modal .modal-head
+        ) {
+            border-bottom-color: var(--line) !important;
+            background: rgba(17, 30, 50, 0.72) !important;
+        }
+        html[data-theme="dark"] :is(
+            .modal-head h3,
+            .demo-submit-success-copy strong,
+            .demo-submit-success-stat strong,
+            .demo-task-copy strong,
+            .demo-task-top strong
+        ) {
+            color: var(--text) !important;
+        }
+        html[data-theme="dark"] :is(
+            .demo-submit-field input,
+            .demo-submit-block textarea,
+            .demo-submit-block input[type="file"],
+            .modal-close
+        ) {
+            background: color-mix(in srgb, var(--field-bg) 88%, #101a2d 12%) !important;
+            border-color: var(--field-border) !important;
+            color: var(--text) !important;
+        }
+        html[data-theme="dark"] :is(
+            .demo-submit-field input::placeholder,
+            .demo-submit-block textarea::placeholder
+        ) {
+            color: color-mix(in srgb, var(--muted) 76%, transparent) !important;
+        }
+        html[data-theme="dark"] .modal-close:hover {
+            background: color-mix(in srgb, var(--primary-soft) 44%, var(--card) 56%) !important;
+            border-color: color-mix(in srgb, var(--primary) 34%, var(--line) 66%) !important;
+        }
+        html[data-theme="dark"] .demo-submit-success-hero {
+            border-color: color-mix(in srgb, var(--line) 82%, rgba(74, 196, 136, 0.24) 18%) !important;
+            background:
+                radial-gradient(circle at top left, rgba(74, 196, 136, 0.1), rgba(74, 196, 136, 0) 34%),
+                linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%)) !important;
+        }
+        html[data-theme="dark"] :is(
+            .demo-video-slider,
+            .demo-video,
+            .upload-empty
+        ) {
+            border-color: color-mix(in srgb, var(--line) 84%, #6e9be0 16%) !important;
+            background:
+                radial-gradient(circle at top right, rgba(120, 175, 255, 0.1), rgba(120, 175, 255, 0) 36%),
+                linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%)) !important;
+            box-shadow: 0 22px 42px rgba(0, 0, 0, 0.28);
+        }
+        html[data-theme="dark"] .demo-video:hover {
+            border-color: color-mix(in srgb, var(--primary) 36%, var(--line) 64%) !important;
+            box-shadow: 0 30px 56px rgba(0, 0, 0, 0.34);
+        }
+        html[data-theme="dark"] :is(
+            .demo-video-thumb,
+            .demo-video-empty
+        ) {
+            background:
+                radial-gradient(circle at 50% 18%, rgba(120, 175, 255, 0.12), rgba(120, 175, 255, 0) 44%),
+                #091427 !important;
+            color: var(--muted) !important;
+        }
+        html[data-theme="dark"] :is(
+            .demo-video-thumb--reel,
+            .demo-media-frame,
+            .demo-media-frame video,
+            .demo-media-frame iframe
+        ) {
+            background: #081325 !important;
+        }
+        html[data-theme="dark"] .demo-video-thumb::after {
+            background:
+                linear-gradient(180deg, rgba(4, 12, 24, 0.18), rgba(4, 12, 24, 0.34)),
+                radial-gradient(circle at center, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 42%) !important;
+        }
+        html[data-theme="dark"] :is(
+            .demo-video-arrow,
+            .demo-task-actions .btn-soft,
+            .demo-task-video-note
+        ) {
+            border-color: var(--line) !important;
+            background: color-mix(in srgb, var(--field-bg) 88%, #101a2d 12%) !important;
+            color: var(--text) !important;
+        }
+        html[data-theme="dark"] .demo-video-arrow:hover,
+        html[data-theme="dark"] .demo-task-actions .btn-soft:hover {
+            border-color: color-mix(in srgb, var(--primary) 34%, var(--line) 66%) !important;
+            background: color-mix(in srgb, var(--primary-soft) 44%, var(--card) 56%) !important;
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.26);
+        }
+        html[data-theme="dark"] .demo-task-rating-panel {
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
+        }
+        html[data-theme="dark"] .demo-video-dot {
+            background: color-mix(in srgb, var(--line) 78%, #8fb3e6 22%);
+        }
+        html[data-theme="dark"] .demo-video-dot.active {
+            background: var(--primary);
+            box-shadow: 0 0 0 6px rgba(120, 175, 255, 0.14);
+        }
+        html[data-theme="dark"] .demo-video-counter {
+            color: var(--muted);
+        }
+        html[data-theme="dark"] :is(
+            .demo-submission-alert,
+            .demo-submission-alert--success
+        ) {
+            border-color: rgba(74, 196, 136, 0.28) !important;
+            background:
+                radial-gradient(circle at top right, rgba(74, 196, 136, 0.16), rgba(74, 196, 136, 0) 36%),
+                linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%)) !important;
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.24);
+        }
+        html[data-theme="dark"] .demo-submission-alert strong {
+            color: #dff6ea !important;
+        }
+        html[data-theme="dark"] .demo-submission-alert p {
+            color: var(--muted) !important;
         }
         @media (prefers-reduced-motion: reduce) {
             .demo-panel,

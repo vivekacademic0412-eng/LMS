@@ -31,12 +31,45 @@ class CourseEnrollmentController extends Controller
         $subcategoryId = $request->query('subcategory_id');
         $trainerId = $request->query('trainer_id');
         $courseId = $request->query('course_id');
+        $activeSearch = trim((string) $request->query('search'));
+        $searchLike = '%'.$activeSearch.'%';
 
         $enrollmentsQuery = CourseEnrollment::with(['course.category', 'course.subcategory', 'student', 'trainer', 'assignedBy'])
             ->when($categoryId, fn ($q) => $q->whereHas('course', fn ($cq) => $cq->where('category_id', $categoryId)))
             ->when($subcategoryId, fn ($q) => $q->whereHas('course', fn ($cq) => $cq->where('subcategory_id', $subcategoryId)))
             ->when($trainerId, fn ($q) => $q->where('trainer_id', $trainerId))
             ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
+            ->when($activeSearch !== '', function ($query) use ($activeSearch, $searchLike) {
+                $query->where(function ($searchQuery) use ($activeSearch, $searchLike) {
+                    if (ctype_digit($activeSearch)) {
+                        $searchQuery->orWhere('course_enrollments.id', (int) $activeSearch);
+                    }
+
+                    $searchQuery
+                        ->orWhereHas('course', function ($courseQuery) use ($searchLike) {
+                            $courseQuery
+                                ->where('title', 'like', $searchLike)
+                                ->orWhere('short_description', 'like', $searchLike)
+                                ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->where('name', 'like', $searchLike))
+                                ->orWhereHas('subcategory', fn ($subcategoryQuery) => $subcategoryQuery->where('name', 'like', $searchLike));
+                        })
+                        ->orWhereHas('student', function ($studentQuery) use ($searchLike) {
+                            $studentQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        })
+                        ->orWhereHas('trainer', function ($trainerQuery) use ($searchLike) {
+                            $trainerQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        })
+                        ->orWhereHas('assignedBy', function ($assignedByQuery) use ($searchLike) {
+                            $assignedByQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        });
+                });
+            })
             ->latest();
 
         return view('enrollments.index', [
@@ -52,6 +85,7 @@ class CourseEnrollmentController extends Controller
             'activeSubcategoryId' => $subcategoryId,
             'activeTrainerId' => $trainerId,
             'activeCourseId' => $courseId,
+            'activeSearch' => $activeSearch,
         ]);
     }
 
@@ -202,10 +236,14 @@ class CourseEnrollmentController extends Controller
         return view('student.courses', [
             'categories' => \App\Models\CourseCategory::with([
                 'courses' => function ($query) {
-                    $query->with(['category', 'subcategory'])->orderBy('title');
+                    $query->withEstimatedMinutesTotal()
+                        ->with(['category', 'subcategory'])
+                        ->orderBy('title');
                 },
                 'children.courses' => function ($query) {
-                    $query->with(['category', 'subcategory'])->orderBy('title');
+                    $query->withEstimatedMinutesTotal()
+                        ->with(['category', 'subcategory'])
+                        ->orderBy('title');
                 },
             ])->whereNull('parent_id')->orderBy('name')->get(),
             'enrolledCourseIds' => $user->enrollmentsAsStudent()->pluck('course_id')->all(),

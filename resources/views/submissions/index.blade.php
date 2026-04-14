@@ -29,6 +29,18 @@
             background: #fff3e6;
             color: #a45a0f;
         }
+        html[data-theme="dark"] .review-tag--pending {
+            background: color-mix(in srgb, var(--field-bg) 88%, #101a2d 12%);
+            color: var(--muted);
+        }
+        html[data-theme="dark"] .review-tag--done {
+            background: rgba(74, 196, 136, 0.16);
+            color: #9de1be;
+        }
+        html[data-theme="dark"] .review-tag--revision {
+            background: rgba(255, 191, 102, 0.16);
+            color: #ffc88a;
+        }
         .submission-copy {
             max-width: 360px;
             white-space: pre-wrap;
@@ -97,6 +109,22 @@
                     <p>Review the latest student submissions with course, trainer, and status filters.</p>
                 </div>
                 <div class="actions-row">
+                    <form method="GET" action="{{ route('submissions.index') }}" class="search-inline-form">
+                        @if ($activeCourseId)
+                            <input type="hidden" name="course_id" value="{{ $activeCourseId }}">
+                        @endif
+                        @if ($activeTrainerId)
+                            <input type="hidden" name="trainer_id" value="{{ $activeTrainerId }}">
+                        @endif
+                        @if ($activeStatus)
+                            <input type="hidden" name="status" value="{{ $activeStatus }}">
+                        @endif
+                        <input type="search" name="search" value="{{ $activeSearch }}" placeholder="Search by course, item, student, or notes">
+                        <button class="btn btn-soft" type="submit">Search</button>
+                        @if ($activeSearch !== '')
+                            <a class="btn btn-soft" href="{{ route('submissions.index', request()->except(['search', 'page'])) }}">Clear</a>
+                        @endif
+                    </form>
                     <div class="filter-wrap">
                         <button type="button" class="filter-btn" data-filter-toggle="submissionFilterPanel" aria-expanded="false">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -106,6 +134,7 @@
                         </button>
                         <div class="filter-panel" id="submissionFilterPanel" aria-hidden="true">
                             <form method="GET" action="{{ route('submissions.index') }}">
+                                <input type="hidden" name="search" value="{{ $activeSearch }}">
                                 <div class="filter-field">
                                     <label>Course</label>
                                     <select name="course_id">

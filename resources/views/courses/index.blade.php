@@ -392,6 +392,19 @@
                     <p>Create and manage courses with category and subcategory.</p>
                 </div>
                 <div class="actions-row">
+                    <form method="GET" action="{{ route('courses.index') }}" class="search-inline-form">
+                        @if ($activeCategoryId)
+                            <input type="hidden" name="category_id" value="{{ $activeCategoryId }}">
+                        @endif
+                        @if ($activeSubcategoryId)
+                            <input type="hidden" name="subcategory_id" value="{{ $activeSubcategoryId }}">
+                        @endif
+                        <input type="search" name="search" value="{{ $activeSearch }}" placeholder="Search by title, category, or creator">
+                        <button class="btn btn-soft" type="submit">Search</button>
+                        @if ($activeSearch !== '')
+                            <a class="btn btn-soft" href="{{ route('courses.index', request()->except(['search', 'page', 'open_modal', 'create_category', 'create_subcategory'])) }}">Clear</a>
+                        @endif
+                    </form>
                     <div class="filter-wrap">
                         <button type="button" class="filter-btn" data-filter-toggle="courseFilterPanel" aria-expanded="false">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -401,6 +414,7 @@
                         </button>
                         <div class="filter-panel" id="courseFilterPanel" aria-hidden="true">
                             <form method="GET" action="{{ route('courses.index') }}" id="courseFilterForm">
+                                <input type="hidden" name="search" value="{{ $activeSearch }}">
                                 <div class="filter-field">
                                     <label>Main Category</label>
                                     <select name="category_id" id="courseCategoryFilter" data-active="{{ (string) $activeCategoryId }}">
@@ -431,6 +445,7 @@
                         </div>
                     </div>
                     @if ($canManage)
+                        <a class="btn btn-soft" href="{{ route('course-categories.index', ['open_modal' => 'modal-main-create']) }}">+ Add New Category</a>
                         <button type="button" class="btn category-create-btn" data-modal-open="modal-course-create">+ Add Course</button>
                     @endif
                 </div>
@@ -447,67 +462,70 @@
                     <h2>Browse by Category</h2>
                     <p>Select a main category, then choose a subcategory to filter courses.</p>
                 </div>
-                <div class="tab-row centered" id="categoryTabs" style="margin-top: 12px;">
-                    @foreach ($categories as $index => $category)
-                        <button class="tab-btn main-tab {{ $index === 0 ? 'active' : '' }}" type="button" data-tab="{{ $category->id }}">
-                            {{ $category->name }}
-                        </button>
-                    @endforeach
-                </div>
-                @foreach ($categories as $index => $category)
-                    @php
-                        $tabCourses = $category->courses
-                            ->concat($category->children->flatMap->courses)
-                            ->unique('id')
-                            ->values();
-                    @endphp
-                    <div class="tab-panel {{ $index === 0 ? 'active' : '' }}" data-tab-panel="{{ $category->id }}">
-                        <div class="subtab-label">Subcategories</div>
-                        <div class="subtab-row" data-subtabs>
-                            <button class="subtab-btn active" type="button" data-subtab="all">All</button>
-                            @foreach ($category->children as $child)
-                                <button class="subtab-btn" type="button" data-subtab="{{ $child->id }}">{{ $child->name }}</button>
-                            @endforeach
-                        </div>
-                        <div class="category-divider"></div>
-                        <div class="course-grid">
-                            @forelse ($tabCourses as $course)
-                                @php
-                                    $thumb = $course->thumbnail_url ?: '';
-                                    $bg = $thumb
-                                        ? "url('{$thumb}')"
-                                        : 'linear-gradient(120deg, #1c5fca, #3aa77a)';
-                                    $assigned = in_array($course->id, $assignedCourseIds, true);
-                                    $courseCategory = $course->subcategory?->name ?? $course->category?->name ?? $category->name;
-                                    $subCategoryId = $course->subcategory?->id ? (string) $course->subcategory->id : 'none';
-                                @endphp
-                                @if ($assigned)
-                                    <a class="course-tile" href="{{ route('courses.show', $course) }}" data-subcat="{{ $subCategoryId }}">
-                                        <div class="course-tile-top" style="background-image: {{ $bg }};">
-                                            <h3>{{ $course->title }}</h3>
-                                        </div>
-                                        <div class="course-tile-body">
-                                            <div class="course-tile-meta">Category: {{ $courseCategory }}</div>
-                                            <div class="btn btn-soft" style="width: fit-content;">Open Course</div>
-                                        </div>
-                                    </a>
-                                @else
-                                    <div class="course-tile disabled" data-subcat="{{ $subCategoryId }}">
-                                        <div class="course-tile-top" style="background-image: {{ $bg }};">
-                                            <h3>{{ $course->title }}</h3>
-                                        </div>
-                                        <div class="course-tile-body">
-                                            <div class="course-tile-meta">Category: {{ $courseCategory }}</div>
-                                            <span class="badge-lock">Locked</span>
-                                        </div>
-                                    </div>
-                                @endif
-                            @empty
-                                <p class="muted">No courses in this category.</p>
-                            @endforelse
-                        </div>
+                @if ($browseCategories->isNotEmpty())
+                    <div class="tab-row centered" id="categoryTabs" style="margin-top: 12px;">
+                        @foreach ($browseCategories as $index => $category)
+                            <button class="tab-btn main-tab {{ $index === 0 ? 'active' : '' }}" type="button" data-tab="{{ $category->id }}">
+                                {{ $category->name }}
+                            </button>
+                        @endforeach
                     </div>
-                @endforeach
+                    @foreach ($browseCategories as $index => $category)
+                        @php
+                            $tabCourses = $category->courses
+                                ->unique('id')
+                                ->values();
+                        @endphp
+                        <div class="tab-panel {{ $index === 0 ? 'active' : '' }}" data-tab-panel="{{ $category->id }}">
+                            <div class="subtab-label">Subcategories</div>
+                            <div class="subtab-row" data-subtabs>
+                                <button class="subtab-btn active" type="button" data-subtab="all">All</button>
+                                @foreach ($category->children as $child)
+                                    <button class="subtab-btn" type="button" data-subtab="{{ $child->id }}">{{ $child->name }}</button>
+                                @endforeach
+                            </div>
+                            <div class="category-divider"></div>
+                            <div class="course-grid">
+                                @forelse ($tabCourses as $course)
+                                    @php
+                                        $thumb = $course->thumbnail_url ?: '';
+                                        $bg = $thumb
+                                            ? "url('{$thumb}')"
+                                            : 'linear-gradient(120deg, #1c5fca, #3aa77a)';
+                                        $assigned = in_array($course->id, $assignedCourseIds, true);
+                                        $courseCategory = $course->subcategory?->name ?? $course->category?->name ?? $category->name;
+                                        $subCategoryId = $course->subcategory?->id ? (string) $course->subcategory->id : 'none';
+                                    @endphp
+                                    @if ($assigned)
+                                        <a class="course-tile" href="{{ route('courses.show', $course) }}" data-subcat="{{ $subCategoryId }}">
+                                            <div class="course-tile-top" style="background-image: {{ $bg }};">
+                                                <h3>{{ $course->title }}</h3>
+                                            </div>
+                                            <div class="course-tile-body">
+                                                <div class="course-tile-meta">Category: {{ $courseCategory }}</div>
+                                                <div class="btn btn-soft" style="width: fit-content;">Open Course</div>
+                                            </div>
+                                        </a>
+                                    @else
+                                        <div class="course-tile disabled" data-subcat="{{ $subCategoryId }}">
+                                            <div class="course-tile-top" style="background-image: {{ $bg }};">
+                                                <h3>{{ $course->title }}</h3>
+                                            </div>
+                                            <div class="course-tile-body">
+                                                <div class="course-tile-meta">Category: {{ $courseCategory }}</div>
+                                                <span class="badge-lock">Locked</span>
+                                            </div>
+                                        </div>
+                                    @endif
+                                @empty
+                                    <p class="muted">No courses in this category.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <p class="muted">No courses match the current filters or search.</p>
+                @endif
             @else
                 <div class="table-wrap">
                     <table>
@@ -600,7 +618,7 @@
                         <div class="form-grid">
                             <div class="field">
                                 <label>Main Category</label>
-                                <select name="category_id" class="js-main-category" required>
+                                <select name="category_id" class="js-main-category" data-default-value="{{ (string) request('create_category', '') }}" required>
                                     <option value="">Select main category</option>
                                     @foreach ($categories as $category)
                                         <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -609,7 +627,7 @@
                             </div>
                             <div class="field">
                                 <label>Subcategory</label>
-                                <select name="subcategory_id" class="js-subcategory">
+                                <select name="subcategory_id" class="js-subcategory" data-default-value="{{ (string) request('create_subcategory', '') }}">
                                     <option value="">Select subcategory (optional)</option>
                                     @foreach ($categories as $category)
                                         @foreach ($category->children as $sub)
@@ -755,6 +773,3 @@
         <script src="{{ asset('js/student-courses.js') }}" defer></script>
     @endif
 @endsection
-
-
-

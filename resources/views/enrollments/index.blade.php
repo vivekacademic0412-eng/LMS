@@ -134,6 +134,25 @@
                     <p>Assign students to courses and optionally attach trainers.</p>
                 </div>
                 <div class="actions-row">
+                    <form method="GET" action="{{ route('enrollments.index') }}" class="search-inline-form">
+                        @if ($activeCategoryId)
+                            <input type="hidden" name="category_id" value="{{ $activeCategoryId }}">
+                        @endif
+                        @if ($activeSubcategoryId)
+                            <input type="hidden" name="subcategory_id" value="{{ $activeSubcategoryId }}">
+                        @endif
+                        @if ($activeCourseId)
+                            <input type="hidden" name="course_id" value="{{ $activeCourseId }}">
+                        @endif
+                        @if ($activeTrainerId)
+                            <input type="hidden" name="trainer_id" value="{{ $activeTrainerId }}">
+                        @endif
+                        <input type="search" name="search" value="{{ $activeSearch }}" placeholder="Search by course, student, or trainer">
+                        <button class="btn btn-soft" type="submit">Search</button>
+                        @if ($activeSearch !== '')
+                            <a class="btn btn-soft" href="{{ route('enrollments.index', request()->except(['search', 'page'])) }}">Clear</a>
+                        @endif
+                    </form>
                     <div class="filter-wrap">
                         <button type="button" class="filter-btn" data-filter-toggle="enrollmentFilterPanel" aria-expanded="false">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -143,6 +162,7 @@
                         </button>
                         <div class="filter-panel" id="enrollmentFilterPanel" aria-hidden="true">
                             <form method="GET" action="{{ route('enrollments.index') }}" id="enrollmentFilterForm">
+                                <input type="hidden" name="search" value="{{ $activeSearch }}">
                                 <div class="filter-field">
                                     <label>Category</label>
                                     <select name="category_id" id="enrollmentCategoryFilter">

@@ -41,6 +41,20 @@
             }
         }
 
+        $orderedCourseItemIds = $allSessions
+            ->flatMap->items
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+        $nextPendingItemOffset = $nextPendingItemId !== null
+            ? $orderedCourseItemIds->search(fn ($itemId) => (int) $itemId === (int) $nextPendingItemId)
+            : false;
+        $nextPendingItemOffset = $nextPendingItemOffset === false ? null : (int) $nextPendingItemOffset;
+        $lockedMap = $nextPendingItemOffset !== null
+            ? array_fill_keys($orderedCourseItemIds->slice($nextPendingItemOffset + 1)->all(), true)
+            : [];
+        $newItemCutoff = now()->subDays(7);
+
         $selectedWeekId = max(0, (int) request('week', 0));
         $selectedSessionId = max(0, (int) request('session', 0));
         $selectedItemId = max(0, (int) request('item', 0));
@@ -585,6 +599,12 @@
             gap: 8px;
             flex-wrap: wrap;
         }
+        .link-badge-row {
+            display: inline-flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 6px;
+        }
         .link-badge {
             display: inline-flex;
             align-items: center;
@@ -609,6 +629,23 @@
             background: #f4f8ff;
             color: #2557af;
         }
+        .link-badge--locked {
+            border-color: #dce5f3;
+            background: #f6f9fd;
+            color: #5d6e87;
+            gap: 6px;
+        }
+        .link-badge--new {
+            border-color: #cfe6d8;
+            background: #f2fbf5;
+            color: #1d7a48;
+        }
+        .link-badge__icon {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+            flex: 0 0 auto;
+        }
         .week-link:hover, .session-link:hover, .item-link:hover {
             transform: translateY(-1px);
             border-color: #bfd4f7;
@@ -620,6 +657,48 @@
             box-shadow: 0 14px 28px rgba(15, 89, 199, 0.12);
         }
         .item-link--done { background: linear-gradient(180deg, rgba(56, 161, 105, 0.05), #fff); }
+        .item-link--locked {
+            border-style: dashed;
+            background: linear-gradient(180deg, #f9fbff 0%, #f4f8ff 100%);
+        }
+        .item-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .item-type-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            border: 1px solid #dbe6f6;
+            background: #f7faff;
+            color: #31588f;
+        }
+        .item-type-icon svg {
+            width: 15px;
+            height: 15px;
+            stroke: currentColor;
+        }
+        .item-type-icon--video {
+            background: #edf4ff;
+            border-color: #d4e4fb;
+            color: #1f5ab6;
+        }
+        .item-type-icon--document {
+            background: #f5f8fc;
+            border-color: #dbe5f1;
+            color: #546985;
+        }
+        .item-type-icon--quiz {
+            background: #fff4e7;
+            border-color: #f2dcc2;
+            color: #ab640f;
+        }
         .week-link strong, .session-link strong, .item-link strong {
             font-size: 13px;
             color: #102849;
@@ -629,6 +708,11 @@
             background: #f7faff;
             color: #31588f;
             border: 1px solid #d8e4f7;
+        }
+        .item-pill--locked {
+            background: #f3f6fb;
+            color: #667892;
+            border-color: #dbe4f1;
         }
         .week-link span, .session-link span, .item-link span {
             font-size: 11px;
@@ -768,6 +852,178 @@
         .support-card--accent {
             border-color: #bfd4f7;
             background: linear-gradient(180deg, rgba(237, 244, 255, 0.94), rgba(255, 255, 255, 0.98));
+        }
+        html[data-theme="dark"] .student-course-alert {
+            background: rgba(241, 112, 112, 0.12);
+            border-color: rgba(241, 112, 112, 0.32);
+            color: #ffb8b8;
+        }
+        html[data-theme="dark"] .student-course-hero,
+        html[data-theme="dark"] .session-focus-shell {
+            border-color: color-mix(in srgb, var(--primary) 22%, var(--line) 78%);
+            background: radial-gradient(circle at top right, rgba(120, 175, 255, 0.14), transparent 36%), linear-gradient(135deg, color-mix(in srgb, var(--card) 95%, #182b47 5%) 0%, color-mix(in srgb, var(--card) 90%, var(--primary-soft) 10%) 100%);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+        }
+        html[data-theme="dark"] :is(
+            .hero-progress-card,
+            .hero-preview,
+            .viewer-panel,
+            .submission-box,
+            .hint-panel,
+            .empty-panel,
+            .hero-stat,
+            .session-switch-link,
+            .lesson-stage-card,
+            .lesson-stage-stat,
+            .viewer-summary-card,
+            .viewer-notes-panel,
+            .lesson-tools,
+            .viewer-text,
+            .submission-answer,
+            .jump-link
+        ) {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #152642 4%), color-mix(in srgb, var(--card) 90%, var(--primary-soft) 10%));
+            border-color: color-mix(in srgb, var(--line) 86%, #6e9be0 14%);
+            color: var(--text);
+            box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+        }
+        html[data-theme="dark"] .hero-preview--empty {
+            background: radial-gradient(circle at top left, rgba(120, 175, 255, 0.22), transparent 34%), linear-gradient(135deg, #1a2d49 0%, #203a61 100%);
+            color: var(--muted);
+        }
+        html[data-theme="dark"] :is(.progress-track, .stage-progress) {
+            background: color-mix(in srgb, var(--line-soft) 72%, #0f1a2f 28%);
+        }
+        html[data-theme="dark"] .course-action--soft,
+        html[data-theme="dark"] .session-switch-link--active,
+        html[data-theme="dark"] .item-nav--active {
+            background: color-mix(in srgb, var(--primary-soft) 82%, #152642 18%);
+            border-color: color-mix(in srgb, var(--primary) 40%, var(--line) 60%);
+            color: #dfeaff;
+        }
+        html[data-theme="dark"] .item-link--locked {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #101a2d 6%), color-mix(in srgb, var(--field-bg) 82%, #101a2d 18%));
+            border-color: color-mix(in srgb, var(--line) 76%, #8aa9d7 24%);
+        }
+        html[data-theme="dark"] .item-type-icon {
+            background: color-mix(in srgb, var(--field-bg) 84%, #101a2d 16%);
+            border-color: color-mix(in srgb, var(--line) 80%, #8aa9d7 20%);
+            color: var(--muted);
+        }
+        html[data-theme="dark"] .item-type-icon--video {
+            background: rgba(120, 175, 255, 0.16);
+            border-color: rgba(120, 175, 255, 0.28);
+            color: #d4e4ff;
+        }
+        html[data-theme="dark"] .item-type-icon--document {
+            background: color-mix(in srgb, var(--field-bg) 88%, #101a2d 12%);
+            border-color: color-mix(in srgb, var(--line) 80%, #8aa9d7 20%);
+            color: var(--muted);
+        }
+        html[data-theme="dark"] .item-type-icon--quiz {
+            background: rgba(240, 191, 102, 0.16);
+            border-color: rgba(240, 191, 102, 0.28);
+            color: #ffd79a;
+        }
+        html[data-theme="dark"] .week-stage--active,
+        html[data-theme="dark"] .session-stage--active,
+        html[data-theme="dark"] .support-card--accent,
+        html[data-theme="dark"] .item-nav--done {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--primary-soft) 52%, #152642 48%), color-mix(in srgb, var(--card) 92%, #0f1a2f 8%));
+            border-color: color-mix(in srgb, var(--primary) 26%, var(--line) 74%);
+        }
+        html[data-theme="dark"] :is(
+            .student-course-hero h1,
+            .roadmap-head h2,
+            .week-stage h3,
+            .session-stage h4,
+            .viewer-head h3,
+            .aside-card h3,
+            .session-focus-copy h2,
+            .session-switch-link strong,
+            .item-nav-copy strong,
+            .lesson-stage-copy h4,
+            .lesson-stage-stat strong,
+            .viewer-summary-card strong,
+            .viewer-notes-head h4,
+            .lesson-tools-head strong,
+            .support-card strong,
+            .aside-row strong
+        ) {
+            color: var(--text);
+        }
+        html[data-theme="dark"] :is(
+            .hero-summary,
+            .hero-note,
+            .roadmap-note,
+            .stage-note,
+            .viewer-note,
+            .submission-meta,
+            .aside-note,
+            .hero-stat span,
+            .session-switch-link span,
+            .item-nav-type,
+            .lesson-stage-stat span,
+            .docx-renderer__status,
+            .pptx-renderer__status,
+            .viewer-summary-card span,
+            .viewer-summary-card p,
+            .lesson-tools-head span,
+            .lesson-tools-field span,
+            .support-card span,
+            .aside-row,
+            .item-nav-arrow
+        ) {
+            color: var(--muted);
+        }
+        html[data-theme="dark"] :is(.hero-chip.hero-chip--soft, .hero-meta, .item-status--ready, .viewer-status--ready, .item-status--next, .viewer-status--next) {
+            background: color-mix(in srgb, var(--primary-soft) 82%, #152642 18%);
+            color: var(--primary);
+            border-color: color-mix(in srgb, var(--primary) 34%, var(--line) 66%);
+        }
+        html[data-theme="dark"] .link-badge--new {
+            background: rgba(74, 196, 136, 0.16);
+            color: #9de1be;
+            border-color: rgba(74, 196, 136, 0.3);
+        }
+        html[data-theme="dark"] :is(.item-status--locked, .link-badge--locked, .item-pill--locked) {
+            background: color-mix(in srgb, var(--field-bg) 86%, #101a2d 14%);
+            color: var(--muted);
+            border-color: color-mix(in srgb, var(--line) 76%, #8aa9d7 24%);
+        }
+        html[data-theme="dark"] :is(.stage-count, .item-status--pending) {
+            background: color-mix(in srgb, var(--field-bg) 86%, #101a2d 14%);
+            color: var(--muted);
+        }
+        html[data-theme="dark"] :is(.item-status--done, .viewer-status--done) {
+            background: rgba(74, 196, 136, 0.14);
+            color: var(--ok);
+        }
+        html[data-theme="dark"] :is(.item-status--live, .viewer-status--live) {
+            background: rgba(240, 191, 102, 0.16);
+            color: #ffd79a;
+        }
+        html[data-theme="dark"] :is(.submission-box input[type="file"], .submission-box textarea, .lesson-tools-field select) {
+            background: var(--field-bg);
+            border-color: var(--field-border);
+            color: var(--text);
+        }
+        html[data-theme="dark"] .aside-progress {
+            border-color: color-mix(in srgb, var(--line) 78%, #6e9be0 22%);
+            box-shadow: inset 0 0 0 8px rgba(12, 20, 38, 0.82);
+            background: radial-gradient(circle, color-mix(in srgb, var(--card) 90%, #0f1a2f 10%) 58%, transparent 59%);
+            color: var(--primary);
+        }
+        html[data-theme="dark"] :is(.docx-renderer, .pptx-renderer) {
+            background: color-mix(in srgb, var(--field-bg) 82%, #0f1a2f 18%);
+            border-color: color-mix(in srgb, var(--line) 86%, #6e9be0 14%);
+            color: var(--text);
+        }
+        html[data-theme="dark"] .docx-renderer .docx-viewer-wrapper {
+            background: color-mix(in srgb, var(--field-bg) 82%, #0f1a2f 18%);
+        }
+        html[data-theme="dark"] .docx-renderer__body table :is(td, th) {
+            border-color: var(--line);
         }
         @keyframes coursePanelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 1080px) { .student-course-hero, .session-focus-layout, .learning-workspace-layout, .lesson-stage-stats { grid-template-columns: 1fr; } .learning-glance-grid, .support-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .viewer-summary-grid { grid-template-columns: 1fr; } .hero-side { order: -1; } .session-focus-actions, .curriculum-stack { position: static; } }
@@ -1047,17 +1303,24 @@
                                         $isCompleted = isset($completedMap[(int) $item->id]);
                                         $isNextItem = $nextPendingItemId !== null && (int) $item->id === (int) $nextPendingItemId;
                                         $isSelectedItem = $selectedItem && (int) $selectedItem->id === (int) $item->id;
+                                        $isLockedItem = isset($lockedMap[(int) $item->id]);
+                                        $isNewItem = optional($item->created_at)?->gte($newItemCutoff) ?? false;
                                         $isQuiz = $item->item_type === \App\Models\CourseSessionItem::TYPE_QUIZ;
                                         $isTask = $item->item_type === \App\Models\CourseSessionItem::TYPE_TASK;
+                                        $itemTypeIconTone = $isQuiz
+                                            ? 'quiz'
+                                            : ($item->item_type === \App\Models\CourseSessionItem::TYPE_MAIN_VIDEO ? 'video' : 'document');
                                         $itemStatus = $isCompleted
                                             ? ($isTask ? 'Task submitted' : ($isQuiz ? 'Quiz answered' : 'Completed'))
-                                            : ($isNextItem ? 'Up next' : ($isQuiz && $item->is_live ? 'Live quiz' : 'Ready to open'));
-                                        $itemTone = $isCompleted ? 'done' : ($isNextItem ? 'next' : ($isQuiz && $item->is_live ? 'live' : 'ready'));
-                                        $itemNote = $isTask
+                                            : ($isLockedItem ? 'Locked' : ($isNextItem ? 'Up next' : ($isQuiz && $item->is_live ? 'Live quiz' : 'Ready to open')));
+                                        $itemTone = $isCompleted ? 'done' : ($isLockedItem ? 'locked' : ($isNextItem ? 'next' : ($isQuiz && $item->is_live ? 'live' : 'ready')));
+                                        $itemNote = $isLockedItem
+                                            ? 'Complete the earlier lesson items to unlock this one.'
+                                            : ($isTask
                                             ? 'Upload your completed work from this page.'
                                             : ($isQuiz
                                                 ? ($item->is_live ? 'Answer it directly inside this workspace.' : 'Waiting for the trainer to make it live.')
-                                                : ($item->resource_url ? 'Opens with a linked lesson resource.' : 'Preview the lesson content inside the page.'));
+                                                : ($item->resource_url ? 'Opens with a linked lesson resource.' : 'Preview the lesson content inside the page.')));
                                         $itemUrl = route('student.courses.show', [
                                             'course' => $course,
                                             'week' => $selectedWeek->id,
@@ -1065,17 +1328,53 @@
                                             'item' => $item->id,
                                         ]).'#learning-workspace';
                                     @endphp
-                                    <a href="{{ $itemUrl }}" class="item-link {{ $isSelectedItem ? 'item-link--active' : '' }} {{ $isCompleted ? 'item-link--done' : '' }}">
+                                    <a href="{{ $itemUrl }}" class="item-link {{ $isSelectedItem ? 'item-link--active' : '' }} {{ $isCompleted ? 'item-link--done' : '' }} {{ $isLockedItem ? 'item-link--locked' : '' }}">
                                         <div class="link-head">
-                                            <strong>Item {{ $loop->iteration }}: {{ $item->title }}</strong>
-                                            @if ($isSelectedItem)
-                                                <span class="link-badge link-badge--active">Now Viewing</span>
-                                            @elseif ($isNextItem)
-                                                <span class="link-badge link-badge--next">Up Next</span>
-                                            @endif
+                                            <div class="item-title">
+                                                <span class="item-type-icon item-type-icon--{{ $itemTypeIconTone }}" aria-hidden="true">
+                                                    @if ($itemTypeIconTone === 'video')
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                                            <rect x="3" y="6" width="13" height="12" rx="2"></rect>
+                                                            <path d="m16 10 5-3v10l-5-3"></path>
+                                                        </svg>
+                                                    @elseif ($itemTypeIconTone === 'quiz')
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                                            <path d="M9 9a3 3 0 1 1 6 0c0 2-3 2-3 5"></path>
+                                                            <path d="M12 17h.01"></path>
+                                                            <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+                                                        </svg>
+                                                    @else
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+                                                            <path d="M14 3v5h5"></path>
+                                                            <path d="M9 13h6"></path>
+                                                            <path d="M9 17h4"></path>
+                                                        </svg>
+                                                    @endif
+                                                </span>
+                                                <strong>Item {{ $loop->iteration }}: {{ $item->title }}</strong>
+                                            </div>
+                                            <div class="link-badge-row">
+                                                @if ($isSelectedItem)
+                                                    <span class="link-badge link-badge--active">Now Viewing</span>
+                                                @elseif ($isNextItem)
+                                                    <span class="link-badge link-badge--next">Up Next</span>
+                                                @elseif ($isLockedItem)
+                                                    <span class="link-badge link-badge--locked">
+                                                        <svg class="link-badge__icon" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+                                                            <path d="M7 10V7a5 5 0 0 1 10 0v3"></path>
+                                                            <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+                                                        </svg>
+                                                        Locked
+                                                    </span>
+                                                @endif
+                                                @if ($isNewItem)
+                                                    <span class="link-badge link-badge--new">New</span>
+                                                @endif
+                                            </div>
                                         </div>
                                         <div class="item-link-meta">
-                                            <span class="item-pill">{{ ucwords(str_replace('_', ' ', $item->item_type)) }}</span>
+                                            <span class="item-pill {{ $isLockedItem ? 'item-pill--locked' : '' }}">{{ ucwords(str_replace('_', ' ', $item->item_type)) }}</span>
                                             <span class="item-status item-status--{{ $itemTone }}">{{ $itemStatus }}</span>
                                         </div>
                                         <small>{{ $itemNote }}</small>

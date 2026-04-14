@@ -28,6 +28,21 @@
     <link rel="icon" type="image/webp" href="{{ asset('images/logo.webp') }}">
     <link rel="shortcut icon" type="image/webp" href="{{ asset('images/logo.webp') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/logo.webp') }}">
+    <script>
+        (function () {
+            try {
+                var storageKey = 'lms-theme';
+                var saved = localStorage.getItem(storageKey);
+                var theme = (saved === 'light' || saved === 'dark')
+                    ? saved
+                    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -92,6 +107,14 @@
             --danger: #f17070;
             --warning: #f0bf66;
             --shadow: 0 24px 42px rgba(0, 0, 0, 0.34);
+        }
+
+        html[data-theme="light"] {
+            color-scheme: light;
+        }
+
+        html[data-theme="dark"] {
+            color-scheme: dark;
         }
 
         html, body {

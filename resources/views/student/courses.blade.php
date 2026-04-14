@@ -103,6 +103,10 @@
         }
         .course-tile-body { padding: 14px 16px; display: grid; gap: 8px; }
         .course-tile-meta { color: var(--muted); font-size: 12px; }
+        .course-tile-duration {
+            color: var(--text);
+            font-weight: 600;
+        }
         .badge-lock {
             display: inline-flex;
             align-items: center;
@@ -149,7 +153,10 @@
 
         @php
             $enrolledCourses = $categories
-                ->flatMap(fn ($cat) => $cat->courses)
+                ->flatMap(fn ($cat) => $cat->courses->concat($cat->children->flatMap->courses))
+                ->unique('id')
+                ->sortBy('title')
+                ->values()
                 ->filter(fn ($course) => in_array($course->id, $enrolledCourseIds, true));
         @endphp
         <section class="card">
@@ -170,6 +177,7 @@
                         </div>
                         <div class="course-tile-body">
                             <div class="course-tile-meta">Open your enrolled course</div>
+                            <div class="course-tile-meta course-tile-duration">Estimated duration: {{ $course->estimatedDurationLabel() }}</div>
                             <div class="btn btn-soft" style="width: fit-content;">Open Course</div>
                         </div>
                     </a>
@@ -225,6 +233,7 @@
                                     </div>
                                     <div class="course-tile-body">
                                         <div class="course-tile-meta">Category: {{ $courseCategory }}</div>
+                                        <div class="course-tile-meta course-tile-duration">Estimated duration: {{ $course->estimatedDurationLabel() }}</div>
                                         <div class="btn btn-soft" style="width: fit-content;">Open Course</div>
                                     </div>
                                 </a>
@@ -235,6 +244,7 @@
                                     </div>
                                     <div class="course-tile-body">
                                         <div class="course-tile-meta">Category: {{ $courseCategory }}</div>
+                                        <div class="course-tile-meta course-tile-duration">Estimated duration: {{ $course->estimatedDurationLabel() }}</div>
                                         <span class="badge-lock">Locked</span>
                                     </div>
                                 </div>

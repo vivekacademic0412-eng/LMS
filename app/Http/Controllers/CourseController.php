@@ -22,28 +22,94 @@ class CourseController extends Controller
 
         $categoryId = $request->query('category_id');
         $subcategoryId = $request->query('subcategory_id');
+        $activeSearch = trim((string) $request->query('search'));
+        $searchLike = '%'.$activeSearch.'%';
+
+        $applyCourseSearch = function ($query) use ($activeSearch, $searchLike): void {
+            $query->when($activeSearch !== '', function ($searchableQuery) use ($activeSearch, $searchLike): void {
+                $searchableQuery->where(function ($searchQuery) use ($activeSearch, $searchLike): void {
+                    if (ctype_digit($activeSearch)) {
+                        $searchQuery->orWhere('courses.id', (int) $activeSearch);
+                    }
+
+                    $searchQuery
+                        ->orWhere('title', 'like', $searchLike)
+                        ->orWhere('short_description', 'like', $searchLike)
+                        ->orWhere('description', 'like', $searchLike)
+                        ->orWhere('language', 'like', $searchLike)
+                        ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->where('name', 'like', $searchLike))
+                        ->orWhereHas('subcategory', fn ($subcategoryQuery) => $subcategoryQuery->where('name', 'like', $searchLike))
+                        ->orWhereHas('creator', function ($creatorQuery) use ($searchLike) {
+                            $creatorQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        });
+                });
+            });
+        };
+
+        $applyCourseFilters = function ($query) use ($categoryId, $subcategoryId, $applyCourseSearch): void {
+            $query
+                ->when($categoryId, fn ($courseQuery) => $courseQuery->where('category_id', $categoryId))
+                ->when($subcategoryId, fn ($courseQuery) => $courseQuery->where('subcategory_id', $subcategoryId));
+
+            $applyCourseSearch($query);
+        };
 
         $coursesQuery = Course::with(['category', 'subcategory', 'creator'])
-            ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId))
-            ->when($subcategoryId, fn ($q) => $q->where('subcategory_id', $subcategoryId))
             ->latest();
+
+        $applyCourseFilters($coursesQuery);
 
         $isTrainer = $this->isTrainer($request);
         $assignedCourseIds = $isTrainer
             ? CourseEnrollment::where('trainer_id', $request->user()->id)->pluck('course_id')->all()
             : [];
 
+        $categories = CourseCategory::query()
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->with('children:id,name,parent_id')
+            ->get(['id', 'name']);
+
+        $browseCategoriesQuery = CourseCategory::query()
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->with('children:id,name,parent_id');
+
+        if ($isTrainer) {
+            $browseCategoriesQuery
+                ->when($categoryId, fn ($query) => $query->whereKey($categoryId))
+                ->when(
+                    $subcategoryId || $activeSearch !== '',
+                    function ($query) use ($applyCourseFilters) {
+                        $query->whereHas('courses', function ($courseQuery) use ($applyCourseFilters) {
+                            $applyCourseFilters($courseQuery);
+                        });
+                    }
+                )
+                ->with([
+                    'children:id,name,parent_id',
+                    'courses' => function ($courseQuery) use ($applyCourseFilters) {
+                        $courseQuery
+                            ->with(['category', 'subcategory', 'creator'])
+                            ->latest();
+
+                        $applyCourseFilters($courseQuery);
+                    },
+                ]);
+        }
+
         return view('courses.index', [
             'courses' => $coursesQuery->paginate(8)->withQueryString(),
-            'categories' => CourseCategory::with('children:id,name,parent_id')
-                ->whereNull('parent_id')
-                ->orderBy('name')
-                ->get(['id', 'name']),
+            'categories' => $categories,
+            'browseCategories' => $browseCategoriesQuery->get(['id', 'name']),
             'canManage' => $this->canManage($request),
             'isTrainer' => $isTrainer,
             'assignedCourseIds' => $assignedCourseIds,
             'activeCategoryId' => $categoryId,
             'activeSubcategoryId' => $subcategoryId,
+            'activeSearch' => $activeSearch,
         ]);
     }
 

@@ -68,19 +68,42 @@
                             <div class="demo-task-shell {{ $hasTaskVideo ? 'demo-task-shell--'.$taskVideoRatio : 'no-video' }}">
                                 @if ($hasTaskVideo)
                                     <div class="demo-task-media-col">
-                                        <div class="demo-task-video demo-task-video--{{ $taskVideoRatio }}">
-                                            <div class="demo-task-video-note">Watch this {{ strtolower($task?->video_ratio_label ?? 'reel') }} task video first, then complete the task below.</div>
-                                            <div class="demo-task-video-frame demo-task-video-frame--{{ $taskVideoRatio }}">
-                                                <video controls preload="metadata" controlslist="nodownload" playsinline>
-                                                    <source src="{{ route('demo-tasks.video', $task) }}" type="{{ $task->task_video_mime ?: 'video/mp4' }}">
-                                                </video>
+                                        <div class="demo-task-media-stack">
+                                            <div class="demo-task-video demo-task-video--{{ $taskVideoRatio }}">
+                                                {{-- <div class="demo-task-video-note">Watch this {{ strtolower($task?->video_ratio_label ?? 'reel') }} task video first, then complete the task below.</div> --}}
+                                                <div class="demo-task-video-note">Watch this video</div>
+                                                <div class="demo-task-video-frame demo-task-video-frame--{{ $taskVideoRatio }}">
+                                                    <video controls preload="metadata" controlslist="nodownload" playsinline>
+                                                        <source src="{{ route('demo-tasks.video', $task) }}" type="{{ $task->task_video_mime ?: 'video/mp4' }}">
+                                                    </video>
+                                                </div>
                                             </div>
+                                            @if ($assignment)
+                                                <div class="demo-submit-block demo-rating-block demo-task-rating-panel">
+                                                    <h4>Rate Task Video</h4>
+                                                    <div class="demo-rating-input" role="radiogroup" aria-label="Rate this task video from 1 to 5 stars">
+                                                        @for ($star = 5; $star >= 1; $star--)
+                                                            <input
+                                                                id="video_rating_{{ $assignment->id }}_{{ $star }}"
+                                                                type="radio"
+                                                                name="video_rating"
+                                                                value="{{ $star }}"
+                                                                form="demo-submit-form-{{ $assignment->id }}"
+                                                                @checked((int) old('video_rating') === $star)
+                                                                required
+                                                            >
+                                                            <label for="video_rating_{{ $assignment->id }}_{{ $star }}" title="{{ $star }} star{{ $star === 1 ? '' : 's' }}">&#9733;</label>
+                                                        @endfor
+                                                    </div>
+                                                    <div class="demo-rating-hint">1 is lowest and 5 is highest.</div>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endif
                                 <div class="demo-task-form-col">
                                     @if ($assignment)
-                                        <form method="POST" action="{{ route('demo-assignments.submit', $assignment) }}" enctype="multipart/form-data" class="demo-submit-panel">
+                                        <form id="demo-submit-form-{{ $assignment->id }}" method="POST" action="{{ route('demo-assignments.submit', $assignment) }}" enctype="multipart/form-data" class="demo-submit-panel">
                                             @csrf
                                             <div class="demo-submit-grid">
                                                 <div class="demo-submit-field">
@@ -120,25 +143,6 @@
                                                     >
                                                 </div>
                                             </div>
-                                            @if ($hasTaskVideo)
-                                                <div class="demo-submit-block demo-rating-block">
-                                                    <h4>Rate Task Video</h4>
-                                                    <div class="demo-rating-input" role="radiogroup" aria-label="Rate this task video from 1 to 5 stars">
-                                                        @for ($star = 5; $star >= 1; $star--)
-                                                            <input
-                                                                id="video_rating_{{ $assignment->id }}_{{ $star }}"
-                                                                type="radio"
-                                                                name="video_rating"
-                                                                value="{{ $star }}"
-                                                                @checked((int) old('video_rating') === $star)
-                                                                required
-                                                            >
-                                                            <label for="video_rating_{{ $assignment->id }}_{{ $star }}" title="{{ $star }} star{{ $star === 1 ? '' : 's' }}">&#9733;</label>
-                                                        @endfor
-                                                    </div>
-                                                    <div class="demo-rating-hint">1 is lowest and 5 is highest.</div>
-                                                </div>
-                                            @endif
                                             <div class="demo-submit-block">
                                                 <h4>Your Answer (Optional)</h4>
                                                 <textarea name="answer_text" rows="4" placeholder="Type your answer here...">{{ old('answer_text') }}</textarea>
@@ -240,7 +244,7 @@
                                             </div>
                                         @else
                                             <div class="demo-media-frame demo-media-frame--landscape">
-                                                <div class="demo-empty" style="height: 100%; display: grid; place-content: center; text-align: center;">
+                                                <div class="demo-empty demo-empty--media">
                                                     FEATURE VIDEO
                                                 </div>
                                             </div>
@@ -263,7 +267,7 @@
                                     </div>
                                     <div class="demo-video-thumb demo-video-thumb--landscape">
                                         <div class="demo-media-frame demo-media-frame--landscape">
-                                            <div class="demo-empty" style="height: 100%; display: grid; place-content: center; text-align: center;">
+                                            <div class="demo-empty demo-empty--media">
                                                 FEATURE VIDEO
                                             </div>
                                         </div>
@@ -418,7 +422,7 @@
                                         </div>
                                         <div class="demo-video-thumb demo-video-thumb--landscape">
                                             <div class="demo-media-frame demo-media-frame--landscape">
-                                                <div class="demo-empty" style="height: 100%; display: grid; place-content: center; text-align: center;">
+                                                <div class="demo-empty demo-empty--media">
                                                     DEMO REVIEWS
                                                 </div>
                                             </div>

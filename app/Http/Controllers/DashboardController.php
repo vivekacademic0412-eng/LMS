@@ -126,6 +126,7 @@ class DashboardController extends Controller
 
         $recommendedCourses = Cache::remember('dashboard.recommended-courses', now()->addMinutes(5), function () {
             return Course::query()
+                ->withEstimatedMinutesTotal()
                 ->with(['category', 'creator'])
                 ->latest('id')
                 ->take(6)
@@ -137,6 +138,7 @@ class DashboardController extends Controller
                         'category' => $course->category?->name ?? 'General',
                         'provider' => $course->creator?->name ?? 'LMS Academy',
                         'hours' => max(1, (int) $course->duration_hours),
+                        'estimated_duration' => $course->estimatedDurationLabel(),
                     ];
                 });
         });

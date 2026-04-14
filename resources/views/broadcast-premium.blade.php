@@ -332,6 +332,69 @@
                 font-size: 21px;
             }
         }
+        html[data-theme="dark"] .broadcast-hero {
+            border-color: color-mix(in srgb, var(--primary) 24%, var(--line) 76%);
+            background:
+                radial-gradient(circle at top left, rgba(120, 175, 255, 0.15), rgba(120, 175, 255, 0) 38%),
+                radial-gradient(circle at bottom right, rgba(74, 196, 136, 0.12), rgba(74, 196, 136, 0) 34%),
+                linear-gradient(140deg, color-mix(in srgb, var(--card) 96%, #152642 4%) 0%, color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%) 100%);
+            box-shadow: 0 20px 36px rgba(0, 0, 0, 0.28);
+        }
+        html[data-theme="dark"] :is(
+            .broadcast-hero h1,
+            .broadcast-stat strong,
+            .broadcast-panel-head h2,
+            .broadcast-side-card h2,
+            .audience-card strong,
+            .broadcast-tip strong
+        ) {
+            color: var(--text);
+        }
+        html[data-theme="dark"] :is(
+            .broadcast-hero p,
+            .broadcast-stat span,
+            .broadcast-stat p,
+            .broadcast-field-note,
+            .broadcast-action-note,
+            .audience-card p,
+            .broadcast-tip p
+        ) {
+            color: var(--muted);
+        }
+        html[data-theme="dark"] :is(
+            .broadcast-chip,
+            .broadcast-stat,
+            .broadcast-form,
+            .audience-card,
+            .broadcast-tip,
+            .broadcast-course-field
+        ) {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #152642 4%), color-mix(in srgb, var(--card) 90%, var(--primary-soft) 10%));
+            border-color: color-mix(in srgb, var(--line) 86%, #6e9be0 14%);
+            color: var(--text);
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+        }
+        html[data-theme="dark"] .broadcast-kicker,
+        html[data-theme="dark"] .audience-badge {
+            background: color-mix(in srgb, var(--primary-soft) 82%, #152642 18%);
+            color: var(--primary);
+            border-color: color-mix(in srgb, var(--primary) 36%, var(--line) 64%);
+        }
+        html[data-theme="dark"] .broadcast-chip.is-danger,
+        html[data-theme="dark"] .broadcast-alert--danger {
+            background: rgba(241, 112, 112, 0.12);
+            border-color: rgba(241, 112, 112, 0.3);
+            color: #ffb8b8;
+        }
+        html[data-theme="dark"] .broadcast-course-field.is-active,
+        html[data-theme="dark"] .audience-card.is-selected {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--primary-soft) 76%, #152642 24%), color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%));
+            border-color: color-mix(in srgb, var(--primary) 40%, var(--line) 60%);
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.26);
+        }
+        html[data-theme="dark"] .broadcast-send-btn {
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.28);
+        }
     </style>
 
     <div class="broadcast-shell">

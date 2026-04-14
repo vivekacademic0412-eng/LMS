@@ -30,6 +30,7 @@ class CourseSessionItem extends Model
         'resource_type',
         'content',
         'resource_url',
+        'estimated_minutes',
         'is_live',
         'live_at',
         'quiz_pass_percentage',
@@ -44,6 +45,7 @@ class CourseSessionItem extends Model
     protected function casts(): array
     {
         return [
+            'estimated_minutes' => 'integer',
             'is_live' => 'boolean',
             'live_at' => 'datetime',
             'quiz_pass_percentage' => 'integer',
@@ -94,6 +96,15 @@ class CourseSessionItem extends Model
     public function quizTimeLimitMinutes(): ?int
     {
         $minutes = (int) ($this->quiz_time_limit_minutes ?? 0);
+
+        return $minutes > 0 ? $minutes : null;
+    }
+
+    public function estimatedMinutes(): ?int
+    {
+        $minutes = $this->item_type === self::TYPE_QUIZ && $this->quizTimeLimitMinutes() !== null
+            ? $this->quizTimeLimitMinutes()
+            : (int) ($this->estimated_minutes ?? 0);
 
         return $minutes > 0 ? $minutes : null;
     }

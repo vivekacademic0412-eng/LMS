@@ -91,6 +91,19 @@
                     <p>Manage users, roles, and account status.</p>
                 </div>
                 <div class="actions-row">
+                    <form method="GET" action="{{ route('users.index') }}" class="search-inline-form">
+                        @if ($activeRole)
+                            <input type="hidden" name="role" value="{{ $activeRole }}">
+                        @endif
+                        @if ($activeStatus)
+                            <input type="hidden" name="status" value="{{ $activeStatus }}">
+                        @endif
+                        <input type="search" name="search" value="{{ $activeSearch }}" placeholder="Search by name, email, or role">
+                        <button class="btn btn-soft" type="submit">Search</button>
+                        @if ($activeSearch !== '')
+                            <a class="btn btn-soft" href="{{ route('users.index', request()->except(['search', 'page'])) }}">Clear</a>
+                        @endif
+                    </form>
                     <div class="filter-wrap">
                         <button type="button" class="filter-btn" data-filter-toggle="userFilterPanel" aria-expanded="false">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -100,6 +113,7 @@
                         </button>
                         <div class="filter-panel" id="userFilterPanel" aria-hidden="true">
                             <form method="GET" action="{{ route('users.index') }}" id="userFilterForm">
+                                <input type="hidden" name="search" value="{{ $activeSearch }}">
                                 <div class="filter-field">
                                     <label>Role</label>
                                     <select name="role" id="userRoleFilter">

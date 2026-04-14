@@ -1,9 +1,15 @@
-﻿(function () {
+(function () {
     var root = document.documentElement;
     var storageKey = 'lms-theme';
+    var mediaQuery = typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)')
+        : null;
 
-    function setTheme(theme) {
+    function applyTheme(theme) {
         root.setAttribute('data-theme', theme);
+    }
+
+    function persistTheme(theme) {
         try {
             localStorage.setItem(storageKey, theme);
         } catch (e) {
@@ -11,7 +17,7 @@
         }
     }
 
-    function getInitialTheme() {
+    function getStoredTheme() {
         try {
             var saved = localStorage.getItem(storageKey);
             if (saved === 'light' || saved === 'dark') {
@@ -21,21 +27,49 @@
             // no-op
         }
 
-        return 'light';
+        return null;
     }
 
-    var currentTheme = getInitialTheme();
-    setTheme(currentTheme);
+    function resolveTheme() {
+        var stored = getStoredTheme();
+        if (stored) {
+            return stored;
+        }
+
+        return mediaQuery && mediaQuery.matches ? 'dark' : 'light';
+    }
+
+    applyTheme(resolveTheme());
 
     document.addEventListener('DOMContentLoaded', function () {
         var toggle = document.getElementById('themeToggle');
-        if (!toggle) {
+        if (toggle) {
+            toggle.addEventListener('click', function () {
+                var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                applyTheme(next);
+                persistTheme(next);
+            });
+        }
+
+        if (!mediaQuery) {
             return;
         }
 
-        toggle.addEventListener('click', function () {
-            var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            setTheme(next);
-        });
+        var handlePreferenceChange = function (event) {
+            if (getStoredTheme()) {
+                return;
+            }
+
+            applyTheme(event.matches ? 'dark' : 'light');
+        };
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', handlePreferenceChange);
+            return;
+        }
+
+        if (typeof mediaQuery.addListener === 'function') {
+            mediaQuery.addListener(handlePreferenceChange);
+        }
     });
 })();

@@ -168,6 +168,37 @@
             color: #5a6b84;
             line-height: 1.7;
         }
+        html[data-theme="dark"] .cert-hero {
+            border-color: color-mix(in srgb, var(--primary) 24%, var(--line) 76%);
+            background: radial-gradient(circle at top right, rgba(120, 175, 255, 0.14), transparent 35%), linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #152642 4%) 0%, color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%) 100%);
+            box-shadow: 0 20px 36px rgba(0, 0, 0, 0.28);
+        }
+        html[data-theme="dark"] .cert-hero h1,
+        html[data-theme="dark"] .cert-brand span,
+        html[data-theme="dark"] .cert-kpi strong,
+        html[data-theme="dark"] .cert-card h2 {
+            color: var(--text);
+        }
+        html[data-theme="dark"] .cert-hero p,
+        html[data-theme="dark"] .cert-kpi span,
+        html[data-theme="dark"] .cert-meta,
+        html[data-theme="dark"] .cert-code,
+        html[data-theme="dark"] .cert-empty {
+            color: var(--muted);
+        }
+        html[data-theme="dark"] .cert-brand,
+        html[data-theme="dark"] .cert-kpi,
+        html[data-theme="dark"] .cert-card,
+        html[data-theme="dark"] .cert-empty {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #152642 4%), color-mix(in srgb, var(--card) 90%, var(--primary-soft) 10%));
+            border-color: color-mix(in srgb, var(--line) 86%, #6e9be0 14%);
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.24);
+        }
+        html[data-theme="dark"] .cert-chip {
+            background: color-mix(in srgb, var(--primary-soft) 82%, #152642 18%);
+            color: var(--primary);
+            border-color: color-mix(in srgb, var(--primary) 36%, var(--line) 64%);
+        }
         @media (max-width: 960px) {
             .cert-hero {
                 grid-template-columns: 1fr;
